@@ -1,0 +1,285 @@
+.sidebar {
+    background: linear-gradient(145deg, #2c3e50 0%, #1e2b38 50%, #1a252f 100%);
+    height: 100vh;
+    color: white;
+    box-shadow: 0 0 25px rgba(0, 0, 0, 0.15);
+    overflow-y: auto;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 1030;
+    width: 250px;
+    transition: all 0.25s ease-in-out;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.content-wrapper {
+    margin-left: 250px;
+    width: calc(100% - 250px);
+    transition: all 0.25s ease-in-out;
+}
+
+/* Logo styling */
+.logo-wrapper {
+    position: relative;
+    width: 45px;
+    height: 45px;
+}
+
+.logo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.logo-wrapper::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #e74c3c, #c0392b);
+    z-index: -1;
+    opacity: 0.6;
+}
+
+/* Section headers styling */
+.sidebar-heading {
+    /* font-size: 0.75rem; */
+    text-transform: uppercase;
+    letter-spacing: 0.12rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    margin-top: 1.5rem;
+    position: relative;
+    margin-bottom: 1rem;
+}
+
+.heading-line {
+    position: absolute;
+    height: 3px;
+    background: linear-gradient(to right, rgba(231, 76, 60, 0.4), transparent);
+    width: 40%;
+    right: 5px;
+    top: 50%;
+}
+
+/* Menu items styling */
+.sidebar .nav-link {
+    color: rgba(255, 255, 255, 0.8);
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 0.35rem;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    position: relative;
+    overflow: hidden;
+}
+
+.sidebar .nav-link::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 3px;
+    height: 0;
+    background: linear-gradient(to bottom, #e74c3c, #c0392b);
+    transition: height 0.2s ease;
+}
+
+.sidebar .nav-link:hover::before {
+    height: 100%;
+}
+
+.sidebar .nav-link:hover {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.08);
+    transform: translateX(5px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar .nav-link.active {
+    color: white;
+    background: linear-gradient(135deg, rgba(231, 76, 60, 0.9), rgba(192, 57, 43, 0.9));
+    box-shadow: 0 4px 15px rgba(231, 76, 60, 0.25);
+    border-radius: 8px;
+}
+
+.sidebar .nav-link.active::before {
+    height: 100%;
+}
+
+.menu-icon-wrapper {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    transition: all 0.2s ease;
+}
+
+.sidebar .nav-link:hover .menu-icon-wrapper {
+    background: rgba(231, 76, 60, 0.15);
+}
+
+.sidebar .nav-link.active .menu-icon-wrapper {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.sidebar .menu-icon {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.9);
+    transition: all 0.2s ease;
+}
+
+/* Collapsed sidebar */
+body.sidebar-collapsed .sidebar {
+    width: 70px;
+}
+
+body.sidebar-collapsed .content-wrapper {
+    margin-left: 70px;
+    width: calc(100% - 70px);
+}
+
+body.sidebar-collapsed .logo-text,
+body.sidebar-collapsed .nav-text,
+body.sidebar-collapsed .section-text,
+body.sidebar-collapsed .user-simple,
+body.sidebar-collapsed .heading-line {
+    opacity: 0;
+    visibility: hidden;
+    width: 0;
+    display: none;
+    transition: opacity 0.2s ease;
+}
+
+body.sidebar-collapsed .menu-icon-wrapper {
+    margin-right: 0;
+}
+
+body.sidebar-collapsed .nav-link {
+    justify-content: center;
+    padding: 0.75rem 0;
+}
+
+body.sidebar-collapsed .sidebar .nav-link:hover {
+    transform: scale(1.1);
+}
+
+/* Custom scrollbar */
+.sidebar::-webkit-scrollbar {
+    width: 5px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Tooltip for collapsed sidebar */
+body.sidebar-collapsed .sidebar .nav-item {
+    position: relative;
+}
+
+body.sidebar-collapsed .sidebar .nav-item:hover::after {
+    content: attr(data-title);
+    position: absolute;
+    left: 75px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #2c3e50;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+    border-left: 3px solid #e74c3c;
+}
+
+body.sidebar-collapsed .sidebar .nav-item:hover::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 65px;
+    transform: translateY(-50%);
+    border-width: 6px;
+    border-style: solid;
+    border-color: transparent #2c3e50 transparent transparent;
+    z-index: 101;
+}
+
+/* Mobile adjustments */
+@media (max-width: 767.98px) {
+    .sidebar {
+        transform: translateX(-100%);
+        width: 250px;
+    }
+
+    .content-wrapper {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    body.sidebar-collapsed .sidebar {
+        transform: translateX(0);
+        width: 250px;
+    }
+
+    body.sidebar-collapsed .content-wrapper {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    body.sidebar-collapsed .sidebar-overlay {
+        display: block;
+    }
+
+    body.sidebar-collapsed .logo-text,
+    body.sidebar-collapsed .nav-text,
+    body.sidebar-collapsed .section-text,
+    body.sidebar-collapsed .user-simple,
+    body.sidebar-collapsed .heading-line {
+        opacity: 1;
+        visibility: visible;
+        width: auto;
+        display: initial;
+    }
+
+    body.sidebar-collapsed .menu-icon-wrapper {
+        margin-right: 12px;
+    }
+
+    body.sidebar-collapsed .nav-link {
+        justify-content: flex-start;
+        padding: 0.75rem 1rem;
+    }
+}
+
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1025;
+    display: none;
+}

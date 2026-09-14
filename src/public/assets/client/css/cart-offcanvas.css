@@ -1,0 +1,209 @@
+/* Cart Offcanvas Styles */
+
+/* Cart Item styling */
+.cart-item {
+    transition: all 0.2s ease;
+}
+
+.cart-item:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.cart-item-img {
+    width: 80px;
+    height: 100px;
+    object-fit: fill;
+    transition: transform 0.2s;
+    border-radius: 4px;
+}
+
+.cart-item-img-link:hover .cart-item-img {
+    transform: scale(1.05);
+}
+
+.cart-item-name {
+    text-decoration: none;
+    color: #333;
+    transition: color 0.2s;
+}
+
+.cart-item-name:hover {
+    color: #e74c3c;
+    text-decoration: none;
+}
+
+.cart-item-name h6 {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+/* Empty cart styling */
+.empty-cart-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 30px 20px;
+    text-align: center;
+}
+
+.empty-cart-image {
+    width: 180px;
+    height: auto;
+    margin-bottom: 20px;
+}
+
+.empty-cart-message {
+    font-size: 18px;
+    font-weight: 600;
+    color: #6c757d;
+    margin-bottom: 10px;
+}
+
+.empty-cart-submessage {
+    font-size: 16px;
+    color: #6c757d;
+    margin-bottom: 25px;
+}
+
+.empty-cart-button {
+    padding: 8px 20px;
+    background-color: #e74c3c;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-weight: 500;
+    transition: background-color 0.3s;
+}
+
+.empty-cart-button:hover {
+    background-color: #c0392b;
+    color: #fff;
+}
+
+/* Cart quantity controls */
+.input-group .decrease-qty,
+.input-group .increase-qty {
+    transition: all 0.2s;
+}
+
+.input-group .decrease-qty:hover,
+.input-group .increase-qty:hover {
+    background-color: #e74c3c;
+    color: white;
+    border-color: #e74c3c;
+}
+
+.remove-item {
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.remove-item:hover {
+    background-color: rgba(231, 76, 60, 0.1);
+    color: #e74c3c;
+}
+
+/* Cart Offcanvas Button Styles */
+.offcanvas .btn-view-cart,
+.offcanvas .btn-checkout {
+    background-color: #e74c3c;
+    border-color: #e74c3c;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    box-shadow: 0 2px 10px rgba(231, 76, 60, 0.2);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    margin-bottom: 10px;
+    color: #fff;
+    text-decoration: none;
+}
+
+.offcanvas .btn-view-cart:before,
+.offcanvas .btn-checkout:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: all 0.6s ease;
+    z-index: -1;
+}
+
+.offcanvas .btn-view-cart:hover:before,
+.offcanvas .btn-checkout:hover:before {
+    left: 100%;
+}
+
+.offcanvas .btn-view-cart:hover,
+.offcanvas .btn-checkout:hover {
+    background-color: #c0392b;
+    border-color: #c0392b;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
+    color: #fff;
+}
+
+.offcanvas .btn-view-cart:active,
+.offcanvas .btn-checkout:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 8px rgba(231, 76, 60, 0.4);
+}
+
+.offcanvas .btn-view-cart .btn-icon,
+.offcanvas .btn-checkout .btn-icon {
+    position: relative;
+    z-index: 2;
+    transition: all 0.3s ease;
+}
+
+.offcanvas .btn-view-cart:hover .btn-icon,
+.offcanvas .btn-checkout:hover .btn-icon {
+    transform: translateX(3px);
+    opacity: 1;
+}
+
+.offcanvas .btn-view-cart {
+    background-color: #4CAF50;
+    border-color: #388E3C;
+}
+
+.offcanvas .btn-view-cart:hover {
+    background-color: #388E3C;
+    border-color: #2E7D32;
+}
+
+/* Responsive styles */
+@media (max-width: 576px) {
+    .cart-item-img {
+        width: 70px;
+        height: 90px;
+    }
+
+    .cart-item-name h6 {
+        font-size: 14px;
+    }
+
+    .offcanvas .btn-view-cart,
+    .offcanvas .btn-checkout {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+}

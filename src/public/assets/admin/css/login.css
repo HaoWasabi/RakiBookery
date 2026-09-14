@@ -1,0 +1,194 @@
+body {
+    font-family: 'Roboto', sans-serif;
+    background: url('/img/background.webp') no-repeat center center fixed;
+    background-size: cover;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+body::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 0;
+}
+
+.login-container {
+    max-width: 450px;
+    width: 100%;
+    padding: 20px;
+    position: relative;
+    z-index: 1;
+}
+
+.card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+    transition: transform 0.3s, box-shadow 0.3s;
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.card-header {
+    background: linear-gradient(to right, #2c3e50, #1a252f);
+    color: white;
+    text-align: center;
+    padding: 2rem 1.5rem;
+    border-bottom: none;
+}
+
+.logo-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 15px;
+}
+
+.logo-container img {
+    height: 80px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    transition: transform 0.3s ease;
+}
+
+.logo-container img:hover {
+    transform: scale(1.05);
+}
+
+.card-body {
+    padding: 2.5rem;
+    background-color: transparent;
+}
+
+.form-floating>label {
+    color: #495057;
+    font-weight: 500;
+    padding-left: 40px;
+}
+
+.form-control {
+    border-radius: 8px;
+    padding: 12px 12px 12px 40px;
+    /* Extra padding for icons */
+    border: 1px solid #ced4da;
+    background: #f8f9fa;
+    transition: all 0.3s;
+}
+
+.form-control:focus {
+    border-color: #4e73df;
+    box-shadow: 0 0 0 0.25rem rgba(78, 115, 223, 0.25);
+    background: #ffffff;
+}
+
+.form-floating i {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6c757d;
+}
+
+.input-group-text {
+    background-color: transparent;
+    cursor: pointer;
+    border-left: none;
+    border-color: #ced4da;
+    color: #6c757d;
+    transition: color 0.3s;
+}
+
+.input-group-text:hover {
+    color: #4e73df;
+}
+
+.password-toggle {
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+/* Remove browser's show password button in Chrome */
+input::-webkit-credentials-auto-fill-button {
+    visibility: hidden;
+    display: none !important;
+    pointer-events: none;
+    position: absolute;
+    right: 0;
+}
+
+#password {
+    border-right: none;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.btn-primary {
+    background: linear-gradient(to right, #4e73df, #3b5bdb);
+    border: none;
+    border-radius: 8px;
+    padding: 12px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    transition: all 0.3s;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(to right, #3b5bdb, #2a4bd7);
+    box-shadow: 0 5px 15px rgba(78, 115, 223, 0.3);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.back-to-website {
+    text-align: center;
+    margin-top: 1.5rem;
+}
+
+.back-to-website a {
+    color: #6c757d;
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: color 0.3s;
+}
+
+.back-to-website a:hover {
+    color: #4e73df;
+    text-decoration: underline;
+}
+
+.login-footer {
+    text-align: center;
+    margin-top: 2rem;
+    color: #adb5bd;
+    font-size: 0.85rem;
+    font-weight: normal;
+}
+
+.spinner-border {
+    width: 1rem;
+    height: 1rem;
+    display: none;
+}
+
+@media (max-width: 576px) {
+    .login-container {
+        padding: 15px;
+        max-width: 90%;
+    }
+
+    .card-body {
+        padding: 1.5rem;
+    }
+}
