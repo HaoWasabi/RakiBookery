@@ -4,6 +4,7 @@ define('ROOT_PATH', dirname(__DIR__));
 
 require_once "../app/controllers/CategoryController.php";
 require_once "../app/controllers/OrderController.php";
+require_once "../app/controllers/PromoController.php";
 require_once "../app/controllers/StatisticsController.php";
 require_once "../app/controllers/AuthController.php";
 require_once "../app/controllers/CategoryController.php";
@@ -13,6 +14,7 @@ require_once "../app/controllers/AdminController.php";
 require_once "../app/controllers/BookController.php";
 
 $orderController = new OrderController();
+$promoController =new PromoController();
 $bookController = new BookController();
 $statictisController = new StatisticsController();
 $categoryController = new CategoryController();
@@ -47,6 +49,16 @@ elseif ($requestUri === "/api/orders/filtered") {
     $orderController->getFilteredOrders();
 } elseif ($requestUri === "/api/orders/recentOrders") {
     $orderController->getRecentOrders();
+}
+// Promo Controller routes
+elseif ($requestUri === "/admin/promos") {
+    $promoController->getAll();
+} elseif ($requestUri === "/admin/promos/add") {
+    $promoController->addPromo();
+} elseif ($requestUri === "/admin/promos/update") {
+    $promoController->updatePromo();
+} elseif ($requestUri === "/admin/promos/delete") {
+$promoController->deletePromo();
 }
 // Order processing routes
 elseif ($_SERVER["REQUEST_URI"] === "/process_checkout") {
