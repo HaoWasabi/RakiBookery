@@ -114,4 +114,32 @@ class Promo
             return false;
         }
     }
+
+    // Check if a promo name exists
+    public function promoExists($name)
+    {
+        try {
+            $query = "SELECT COUNT(*) FROM " . $this->table . " WHERE Name = ?";
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute([$name]);
+            return (int) $stmt->fetchColumn() > 0;
+        } catch (PDOException $e) {
+            error_log("Lỗi kiểm tra tên khuyến mãi tồn tại: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // Check if a promo name exists for other categories (used when updating)
+    public function promoExistsForOtherPromo($name, $id)
+    {
+        try {
+            $query = "SELECT COUNT(*) FROM " . $this->table . " WHERE Name = ? AND PromoID != ?";
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute([$name, $id]);
+            return (int) $stmt->fetchColumn() > 0;
+        } catch (PDOException $e) {
+            error_log("Lỗi kiểm tra tên khuyến mãi tồn tại: " . $e->getMessage());
+            return false;
+        }
+    }
 }
