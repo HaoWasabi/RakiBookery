@@ -52,13 +52,13 @@ elseif ($requestUri === "/api/orders/filtered") {
 }
 // Promo Controller routes
 elseif ($requestUri === "/admin/promos") {
-    $promoController->getAll();
+    $adminController->promos();
 } elseif ($requestUri === "/admin/promos/add") {
     $promoController->addPromo();
 } elseif ($requestUri === "/admin/promos/update") {
     $promoController->updatePromo();
 } elseif ($requestUri === "/admin/promos/delete") {
-$promoController->deletePromo();
+    $promoController->deletePromo();
 }
 // Order processing routes
 elseif ($_SERVER["REQUEST_URI"] === "/process_checkout") {

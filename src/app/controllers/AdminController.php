@@ -4,6 +4,7 @@ require_once ROOT_PATH . '/app/models/Book.php';
 require_once ROOT_PATH . '/app/models/User.php';
 require_once ROOT_PATH . '/app/models/Order.php';
 require_once ROOT_PATH . '/app/models/PaymentMethod.php';
+require_once ROOT_PATH . '/app/models/Promo.php';
 require_once ROOT_PATH . '/app/controllers/BaseController.php';
 
 class AdminController extends BaseController
@@ -14,6 +15,7 @@ class AdminController extends BaseController
     private $userModel;
     private $orderModel;
     private $paymentMethodModel;
+    private $promoModel;
 
     public function __construct()
     {
@@ -22,6 +24,7 @@ class AdminController extends BaseController
         $this->userModel = new User();
         $this->orderModel = new Order();
         $this->paymentMethodModel = new PaymentMethod();
+        $this->promoModel = new Promo();
 
         $this->data['paymentMethods'] = $this->paymentMethodModel->getAllPaymentMethods();
     }
@@ -261,6 +264,15 @@ class AdminController extends BaseController
         $this->data['topCustomers'] = $this->orderModel->getTopCustomersWithOrders('', '', 5);
 
         $this->renderView('top-customers', 'Top khách hàng', 'top-customers');
+    }
+
+    public function promos()
+    {
+        $this->checkAdminAuth();
+
+        $this->data['promos'] = $this->promoModel->getAll();
+
+        $this->renderView('promos', 'Quản lý khuyến mãi', 'promos');
     }
     public function notFound()
     {
