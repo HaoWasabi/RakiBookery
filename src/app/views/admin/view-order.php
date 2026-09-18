@@ -1,685 +1,231 @@
 <!-- Order Detail View -->
 <div class="container-fluid px-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3">Chi tiết đơn hàng <?= $order['OrderID'] ?></h1>
-        <div class="d-flex">
-            <!-- <button type="button" class="btn btn-outline-secondary me-2" id="printOrder">
-                <i class="fas fa-print me-2"></i>In đơn hàng
-            </button> -->
-            <a href="javascript:history.back()" class="btn btn-secondary">
-                <i class="fas fa-arrow-left me-2"></i>Quay lại
-            </a>
-        </div>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3">Chi tiết đơn hàng #<?= $order['OrderID'] ?></h1>
+    <a href="javascript:history.back()" class="btn btn-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Quay lại
+    </a>
+</div>
+
+<?php
+$status_text = ''; $statusStage = 0;
+$badgeBg = '#e9ecef'; $badgeColor = '#495057';
+switch ($order['Status']) {
+    case 'pending':
+        $status_text = 'Chờ xác nhận'; $statusStage = 1;
+        $badgeBg = '#fff3cd'; $badgeColor = '#856404'; break;
+    case 'confirmed':
+        $status_text = 'Đã xác nhận'; $statusStage = 2;
+        $badgeBg = '#d1ecf1'; $badgeColor = '#0c5460'; break;
+    case 'delivered_success':
+        $status_text = 'Đã giao hàng'; $statusStage = 4;
+        $badgeBg = '#d4edda'; $badgeColor = '#155724'; break;
+    case 'canceled':
+        $status_text = 'Đã hủy'; $statusStage = 0;
+        $badgeBg = '#f8d7da'; $badgeColor = '#721c24'; break;
+}
+$s = function(int $t) use ($statusStage): array {
+    $a = $statusStage >= $t;
+    return ['op'=>$a?'1':'0.4','bg'=>$a?'#dc3545':'#e9ecef','fill'=>$a?'#fff':'#6c757d','fw'=>$a?'600':'400','clr'=>$a?'#212529':'#6c757d'];
+};
+$s1=$s(1); $s2=$s(2); $s3=$s(4);
+$pct = min(($statusStage/3)*100, 100);
+?>
+
+<!-- TRẠNG THÁI ĐƠN HÀNG -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-white py-3">
+        <h5 class="mb-0 fw-semibold">Trạng thái đơn hàng</h5>
     </div>
-
-    <div class="row">
-        <!-- Order Information and Actions -->
-        <div class="col-lg-8 mb-4">
-            <div class="admin-card">
-                <div class="admin-card-header d-flex justify-content-between align-items-center">
-                    <h5 class="admin-card-title mb-0">
-                        <i class="fas fa-info-circle me-2"></i>Thông tin đơn hàng
-                    </h5>
-                    <div class="order-status">
-                        <?php
-                        $status_class = '';
-                        $status_text = '';
-
-                        switch ($order['Status']) {
-                            case 'pending':
-                                $status_class = 'status-warning';
-                                $status_text = 'Chờ xác nhận';
-                                break;
-                            case 'confirmed':
-                                $status_class = 'status-info';
-                                $status_text = 'Đã xác nhận';
-                                break;
-                            case 'delivered_success':
-                                $status_class = 'status-success';
-                                $status_text = 'Đã giao hàng';
-                                break;
-                            case 'canceled':
-                                $status_class = 'status-danger';
-                                $status_text = 'Đã hủy';
-                                break;
-                        }
-                        ?>
-                        <span class="status-badge <?= $status_class ?>"><?= $status_text ?></span>
+    <div class="card-body">
+        <?php if ($statusStage === 0): ?>
+            <div class="alert alert-danger d-flex align-items-center mb-3">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                <div>Đơn hàng đã bị hủy.</div>
+            </div>
+        <?php else: ?>
+            <div style="height:6px;background:#e9ecef;border-radius:4px;margin-bottom:1.75rem;overflow:hidden;">
+                <div style="height:100%;background:#dc3545;border-radius:4px;width:<?= $pct ?>%;"></div>
+            </div>
+            <div class="row text-center mb-2">
+                <div class="col-4">
+                    <div style="display:flex;flex-direction:column;align-items:center;opacity:<?= $s1['op'] ?>;">
+                        <div style="width:52px;height:52px;border-radius:50%;background:<?= $s1['bg'] ?>;display:flex;align-items:center;justify-content:center;margin:0 auto 0.6rem;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="<?= $s1['fill'] ?>" viewBox="0 0 16 16">
+                                <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2zM5 8h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1 0-1zm0 2h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1 0-1zm0-4h1a.5.5 0 0 1 0 1H5a.5.5 0 0 1 0-1z"/>
+                            </svg>
+                        </div>
+                        <p style="font-size:.875rem;margin-bottom:2px;font-weight:<?= $s1['fw'] ?>;color:<?= $s1['clr'] ?>;">Đặt hàng</p>
+                        <p style="font-size:.75rem;color:#6c757d;margin:0;"><?= date('H:i:s d/m/Y', strtotime($order['OrderDate'])) ?></p>
                     </div>
                 </div>
-                <div class="admin-card-body">
-                    <!-- Order Timeline -->
-                    <div class="order-timeline mb-4">
-                        <div class="progress" style="height: 5px;">
-                            <?php
-                            $progress = 0;
-                            switch ($order['Status']) {
-                                case 'pending':
-                                    $progress = 25;
-                                    break;
-                                case 'confirmed':
-                                    $progress = 50;
-                                    break;
-                                case 'delivered_success':
-                                    $progress = 100;
-                                    break;
-                                case 'canceled':
-                                    $progress = 0;
-                                    break;
-                            }
-                            ?>
-                            <?php if ($order['Status'] != 'canceled'): ?>
-                                <div class="progress-bar bg-gradient" role="progressbar" style="width: <?= $progress ?>%"
-                                    aria-valuenow="<?= $progress ?>" aria-valuemin="0" aria-valuemax="100"></div>
-                            <?php else: ?>
-                                <div class="progress-bar bg-danger" role="progressbar" style="width: 100%"
-                                    aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
-                            <?php endif; ?>
+                <div class="col-4">
+                    <div style="display:flex;flex-direction:column;align-items:center;opacity:<?= $s2['op'] ?>;">
+                        <div style="width:52px;height:52px;border-radius:50%;background:<?= $s2['bg'] ?>;display:flex;align-items:center;justify-content:center;margin:0 auto 0.6rem;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="<?= $s2['fill'] ?>" viewBox="0 0 16 16">
+                                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+                            </svg>
                         </div>
-                        <div class="timeline-steps">
-                            <div class="timeline-step <?= $order['Status'] != 'canceled' ? 'active' : '' ?>">
-                                <div class="timeline-step-icon">
-                                    <i class="fas fa-file-invoice"></i>
-                                </div>
-                                <div class="timeline-step-label">Đặt hàng</div>
-                                <div class="timeline-step-date">
-                                    <?= date('d/m/Y H:i:s', strtotime($order['OrderDate'])) ?>
-                                </div>
-                            </div>
-                            <div
-                                class="timeline-step <?= in_array($order['Status'], ['confirmed', 'delivered_success']) ? 'active' : '' ?>">
-                                <div class="timeline-step-icon">
-                                    <i class="fas fa-check-circle"></i>
-                                </div>
-                                <div class="timeline-step-label">Xác nhận</div>
-                                <div class="timeline-step-date">
-                                    <!-- < ?= in_array($order['Status'], ['confirmed', 'delivered_success'])
-                                        ? date('d/m/Y H:i', strtotime($order['confirmation_date'] ?? $order['OrderDate']))
-                                        : '-' ?> -->
-                                </div>
-                            </div>
-                            <div class="timeline-step <?= $order['Status'] == 'delivered_success' ? 'active' : '' ?>">
-                                <div class="timeline-step-icon">
-                                    <i class="fas fa-box-open"></i>
-                                </div>
-                                <div class="timeline-step-label">Đã giao</div>
-                                <div class="timeline-step-date">
-                                    <!-- < ?= $order['Status'] == 'delivered_success'
-                                        ? date('d/m/Y H:i', strtotime($order['delivery_date'] ?? $order['OrderDate']))
-                                        : '-' ?> -->
-                                </div>
-                            </div>
-                            <?php if ($order['Status'] == 'canceled'): ?>
-                                <div class="timeline-step active canceled">
-                                    <div class="timeline-step-icon">
-                                        <i class="fas fa-ban"></i>
-                                    </div>
-                                    <div class="timeline-step-label">Đã hủy</div>
-                                    <!-- <div class="timeline-step-date">
-                                        < ?= date('d/m/Y H:i', strtotime($order['cancellation_date'] ?? $order['OrderDate'])) ?>
-                                    </div> -->
-                                </div>
-                            <?php endif; ?>
-                        </div>
+                        <p style="font-size:.875rem;margin-bottom:2px;font-weight:<?= $s2['fw'] ?>;color:<?= $s2['clr'] ?>;">Xác nhận</p>
                     </div>
-
-                    <!-- Order Details Grid -->
-                    <div class="row g-4">
-                        <div class="col-md-6">
-                            <div class="order-detail-card">
-                                <h6 class="order-detail-title">
-                                    <i class="fas fa-user me-2"></i>Thông tin khách hàng
-                                </h6>
-                                <div class="order-detail-content">
-                                    <p><strong>Tên:</strong> <?= $order['UserName'] ?></p>
-                                    <p><strong>Email:</strong> <?= $order['Email'] ?? 'Không có' ?></p>
-                                    <p><strong>Số điện thoại:</strong> <?= $order['Phone'] ?></p>
-                                    <!-- <p><strong>Loại khách hàng:</strong>
-                                        <span class="badge bg-info">
-                                            < ?= $order['Role'] ?? 'Thường' ?>
-                                        </span>
-                                    </p> -->
-                                    <a href="/admin/users/user-info?id=<?= $order['UserID'] ?>"
-                                        class="btn btn-sm btn-outline-primary">
-                                        <i class="fas fa-external-link-alt me-1"></i>Xem hồ sơ
-                                    </a>
-                                </div>
-                            </div>
+                </div>
+                <div class="col-4">
+                    <div style="display:flex;flex-direction:column;align-items:center;opacity:<?= $s3['op'] ?>;">
+                        <div style="width:52px;height:52px;border-radius:50%;background:<?= $s3['bg'] ?>;display:flex;align-items:center;justify-content:center;margin:0 auto 0.6rem;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="<?= $s3['fill'] ?>" viewBox="0 0 16 16">
+                                <path d="M8.186 1.113a.5.5 0 0 0-.372 0L1.846 3.5l2.404.961L10.404 2 8.186 1.113zm3.564 1.426L5.596 5 8 5.961 14.154 3.5l-2.404-.961zm3.25 1.7-6.5 2.6v7.922l6.5-2.6V4.24zM7.5 14.762V6.838L1 4.239v7.923l6.5 2.6zM7.443.184a1.5 1.5 0 0 1 1.114 0l7.129 2.852A.5.5 0 0 1 16 3.5v8.662a1 1 0 0 1-.629.928l-7.185 2.874a.5.5 0 0 1-.372 0L.63 13.09a1 1 0 0 1-.63-.928V3.5a.5.5 0 0 1 .314-.464L7.443.184z"/>
+                            </svg>
                         </div>
-                        <div class="col-md-6">
-                            <div class="order-detail-card">
-                                <h6 class="order-detail-title">
-                                    <i class="fas fa-map-marker-alt me-2"></i>Địa chỉ giao hàng
-                                </h6>
-                                <div class="order-detail-content">
-                                    <p><strong>Địa chỉ:</strong> <?= $order['Address'] ?></p>
-                                    <p><strong>Phường/Xã:</strong> <?= $order['Ward'] ?></p>
-                                    <p><strong>Quận/Huyện:</strong> <?= $order['District'] ?></p>
-                                    <p><strong>Tỉnh/Thành phố:</strong> <?= $order['City'] ?></p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <div class="order-detail-card">
-                                <h6 class="order-detail-title">
-                                    <i class="fas fa-money-bill-wave me-2"></i>Thông tin thanh toán
-                                </h6>
-                                <div class="order-detail-content">
-                                    <p><strong>Phương thức thanh toán:</strong> <?= $order['PaymentMethod'] ?></p>
-                                    <!-- <p>
-                                        <strong>Trạng thái:</strong>
-                                        < ?php if (isset($order['PaymentStatus']) && $order['PaymentStatus'] === 'paid'): ?>
-                                            <span class="status-badge status-success">Đã thanh toán</span>
-                                        < ?php else: ?>
-                                            <span class="status-badge status-pending">Chưa thanh toán</span>
-                                        < ?php endif; ?>
-                                    </p> -->
-                                    <!-- <p><strong>Mã giao dịch:</strong> < ?= $order['TransactionID'] ?? 'Không có' ?></p> -->
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="order-detail-card">
-                                <h6 class="order-detail-title">
-                                    <i class="fas fa-tags me-2"></i>Thông tin đơn hàng
-                                </h6>
-                                <div class="order-detail-content">
-                                    <p><strong>Mã đơn hàng:</strong> <?= $order['OrderID'] ?></p>
-                                    <p><strong>Ngày đặt:</strong>
-                                        <?= date('d/m/Y H:i', strtotime($order['OrderDate'])) ?>
-                                    </p>
-                                    <p><strong>Tổng tiền:</strong> <span
-                                            class="text-danger fw-bold"><?= number_format($order['TotalAmount']) ?>
-                                            đ</span>
-                                    </p>
-                                    <!-- <p><strong>Ghi chú:</strong> < ?= $order['Note'] ?? 'Không có' ?></p> -->
-                                </div>
-                            </div>
-                        </div>
+                        <p style="font-size:.875rem;margin-bottom:2px;font-weight:<?= $s3['fw'] ?>;color:<?= $s3['clr'] ?>;">Đã giao</p>
                     </div>
+                </div>
+            </div>
+        <?php endif; ?>
+        <div class="text-center mt-2">
+            <span style="display:inline-block;padding:.4em 1.1em;border-radius:20px;font-size:.85rem;font-weight:600;background:<?= $badgeBg ?>;color:<?= $badgeColor ?>;">
+                ● <?= $status_text ?>
+            </span>
+        </div>
+    </div>
+</div>
 
-                    <!-- Actions -->
-                    <!--                     < ?php if ($order['Status'] != 'delivered_success' && $order['Status'] != 'canceled'): ?>
-                        <div class="order-actions mt-4">
-                            <h6 class="mb-3">Cập nhật trạng thái</h6>
-                            <form id="updateOrderStatusForm" action="/api/users/toggle-status" method="POST"
-                                class="row g-3">
-                                <input type="hidden" name="orderId" value="< ?= $order['OrderID'] ?>">
-
-                                <div class="col-md-4">
-                                    <select class="form-select" name="status" required>
-                                        <option value="pending" < ?= $order['Status'] == 'pending' ? 'selected' : '' ?>>Chờ xác
-                                            nhận</option>
-                                        <option value="confirmed" < ?= $order['Status'] == 'confirmed' ? 'selected' : '' ?>>Đã
-                                            xác nhận</option>
-                                        <option value="delivered_success" < ?= $order['Status'] == 'delivered_success' ? 'selected' : '' ?>>Đã giao</option>
-                                        <option value="canceled" < ?= $order['Status'] == 'canceled' ? 'selected' : '' ?>>Đã hủy
-                                        </option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <input type="text" class="form-control" name="note" placeholder="Ghi chú (nếu có)">
-                                </div>
-                                <div class="col-md-2">
-                                    <button type="submit" class="btn btn-primary w-100">Cập nhật</button>
-                                </div>
-                            </form>
-                        </div>
-                    < ?php endif; ?> -->
+<!-- CHI TIẾT + THÔNG TIN ĐƠN HÀNG -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 fw-semibold">Chi tiết đơn hàng</h5>
+            </div>
+            <div class="card-body">
+                <div class="border rounded p-3 mb-3">
+                    <h6 class="fw-semibold mb-3 pb-2 border-bottom">
+                        <i class="fas fa-user me-2 text-secondary"></i>Thông tin khách hàng
+                    </h6>
+                    <p class="mb-2"><strong>Tên:</strong> <?= htmlspecialchars($order['UserName']) ?></p>
+                    <p class="mb-2"><strong>Email:</strong> <?= htmlspecialchars($order['Email'] ?? 'Không có') ?></p>
+                    <p class="mb-3"><strong>Số điện thoại:</strong> <?= htmlspecialchars($order['Phone']) ?></p>
+                    <a href="/admin/users/user-info?id=<?= $order['UserID'] ?>" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-external-link-alt me-1"></i>Xem hồ sơ
+                    </a>
+                </div>
+                <div class="border rounded p-3">
+                    <h6 class="fw-semibold mb-3 pb-2 border-bottom">
+                        <i class="fas fa-map-marker-alt me-2 text-secondary"></i>Địa chỉ giao hàng
+                    </h6>
+                    <p class="mb-2"><strong>Địa chỉ:</strong> <?= htmlspecialchars($order['Address']) ?></p>
+                    <p class="mb-2"><strong>Phường/Xã:</strong> <?= htmlspecialchars($order['Ward']) ?></p>
+                    <p class="mb-2"><strong>Quận/Huyện:</strong> <?= htmlspecialchars($order['District']) ?></p>
+                    <p class="mb-0"><strong>Tỉnh/Thành phố:</strong> <?= htmlspecialchars($order['City']) ?></p>
                 </div>
             </div>
         </div>
-
-        <!-- Order Summary -->
-        <div class="col-lg-4 mb-4">
-            <div class="admin-card mb-4">
-                <div class="admin-card-header">
-                    <h5 class="admin-card-title mb-0">
-                        <i class="fas fa-calculator me-2"></i>Tóm tắt đơn hàng
-                    </h5>
-                </div>
-                <div class="admin-card-body p-0">
-                    <ul class="list-group list-group-flush">
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>Tổng tiền hàng</span>
-                            <span class="fw-medium"><?= number_format($order['Subtotal'] ?? $order['TotalAmount']) ?>
-                                đ</span>
-                        </li>
-                        <!-- < ?php if (isset($order['Discount']) && $order['Discount'] > 0): ?>
-                            <li class="list-group-item d-flex justify-content-between align-items-center text-success">
-                                <span>Giảm giá</span>
-                                <span class="fw-medium">-<?= number_format($order['Discount']) ?> đ</span>
-                            </li>
-                        < ?php endif; ?> -->
-                        <li class="list-group-item d-flex justify-content-between align-items-center fw-bold">
-                            <span>Tổng thanh toán</span>
-                            <span class="text-danger"><?= number_format($order['TotalAmount']) ?> đ</span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-
-            <!-- Customer Order History -->
-            <!-- <div class="admin-card">
-                <div class="admin-card-header">
-                    <h5 class="admin-card-title mb-0">
-                        <i class="fas fa-history me-2"></i>Lịch sử khách hàng
-                    </h5>
-                </div>
-                <div class="admin-card-body">
-                    <?php if (!empty($customerOrders)): ?>
-                        <div class="d-flex justify-content-between mb-3">
-                            <span>Tổng đơn hàng:</span>
-                            <span class="fw-bold"><?= count($customerOrders) ?></span>
-                        </div>
-                        <div class="d-flex justify-content-between mb-3">
-                            <span>Tổng chi tiêu:</span>
-                            <span class="fw-bold text-danger"><?= number_format($customerTotalSpent) ?> đ</span>
-                        </div>
-                        <h6 class="mt-4 mb-3">Các đơn hàng gần đây</h6>
-                        <div class="customer-orders-list">
-                            <?php foreach (array_slice($customerOrders, 0, 5) as $customerOrder): ?>
-                                <div class="customer-order-item">
-                                    <div class="d-flex justify-content-between">
-                                        <a href="/admin/orders/order-detail?id=<?= $customerOrder['OrderID'] ?>"
-                                            class="text-decoration-none">
-                                            <?= $customerOrder['OrderID'] ?>
-                                        </a>
-                                        <span class="fw-medium"><?= number_format($customerOrder['TotalAmount']) ?> đ</span>
-                                    </div>
-                                    <div class="d-flex justify-content-between mt-1">
-                                        <span
-                                            class="small text-muted"><?= date('H:i:s d/m/Y', strtotime($customerOrder['OrderDate'])) ?></span>
-                                        <?php
-                                        $orderStatusClass = '';
-                                        $orderStatusText = '';
-                                        switch ($customerOrder['Status']) {
-                                            case 'pending':
-                                                $orderStatusClass = 'status-pending';
-                                                $orderStatusText = 'Chờ xác nhận';
-                                                break;
-                                            case 'confirmed':
-                                                $orderStatusClass = 'status-info';
-                                                $orderStatusText = 'Đã xác nhận';
-                                                break;
-                                            case 'delivered_success':
-                                                $orderStatusClass = 'status-success';
-                                                $orderStatusText = 'Đã giao';
-                                                break;
-                                            case 'canceled':
-                                                $orderStatusClass = 'status-error';
-                                                $orderStatusText = 'Đã hủy';
-                                                break;
-                                        }
-                                        ?>
-                                        <span class="status-badge small <?= $orderStatusClass ?>"><?= $orderStatusText ?></span>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php else: ?>
-                        <div class="alert alert-info mb-0">
-                            Khách hàng chưa có đơn hàng nào khác.
-                        </div>
-                    <?php endif; ?>
-                </div>
-            </div> -->
-        </div>
     </div>
 
-    <!-- Order Items -->
-    <div class="admin-card mb-4">
-        <div class="admin-card-header d-flex justify-content-between align-items-center">
-            <h5 class="admin-card-title mb-0">
-                Sản phẩm trong đơn
-            </h5>
-            <span class="badge bg-primary rounded-pill"><?= count($orderDetails) ?> sản phẩm</span>
-        </div>
-        <div class="admin-card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th width="5%">STT</th>
-                            <th width="15%">Hình ảnh</th>
-                            <th width="25%">Sản phẩm</th>
-                            <th width="10%" class="text-center">Số lượng</th>
-                            <th width="15%" class="text-end">Đơn giá</th>
-                            <th width="15%" class="text-end">Thành tiền</th>
-                            <th width="15%" class="text-center">Thao tác</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php $index = 1; ?>
-                        <?php foreach ($orderDetails as $item): ?>
-                            <tr>
-                                <td><?= $index++ ?></td>
-                                <td>
-                                    <img src="<?= $item['ImageURL'] ?>" alt="<?= $item['ProductName'] ?>"
-                                        class="img-thumbnail" style="width: 80px; height: 100px; object-fit: cover;">
-                                </td>
-                                <td>
-                                    <div class="fw-medium"><?= $item['ProductName'] ?></div>
-                                    <div class="text-muted small">
-                                        <div>Tác giả: <?= $item['Author'] ?></div>
-                                        <div>Thể loại: <?= $item['Category'] ?></div>
-                                        <!-- <div>Mã sản phẩm: <?= $item['ProductID'] ?></div> -->
-                                    </div>
-                                </td>
-                                <td class="text-center"><?= $item['Quantity'] ?></td>
-                                <td class="text-end"><?= number_format($item['Price'], 0, ',', '.') ?> đ</td>
-                                <td class="text-end fw-bold">
-                                    <?= number_format($item['Price'] * $item['Quantity'], 0, ',', '.') ?> đ
-                                </td>
-                                <td class="text-center">
-                                    <a href="/admin/products/product-detail?id=<?= $item['ProductID'] ?>"
-                                        class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip"
-                                        title="Xem sản phẩm">
-                                        <i class="fas fa-external-link-alt"></i>
-                                    </a>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+    <div class="col-lg-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 fw-semibold">Thông tin đơn hàng</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush mb-3">
+                    <li class="list-group-item d-flex justify-content-between px-0">
+                        <span class="text-secondary">Mã đơn hàng</span>
+                        <span class="fw-bold">#<?= $order['OrderID'] ?></span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between px-0">
+                        <span class="text-secondary">Ngày đặt hàng</span>
+                        <span><?= date('H:i:s d/m/Y', strtotime($order['OrderDate'])) ?></span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between px-0">
+                        <span class="text-secondary">Phương thức TT</span>
+                        <span><?= htmlspecialchars($order['PaymentMethod']) ?></span>
+                    </li>
+                </ul>
+                <hr>
+                <?php
+                $origAmt  = isset($order['OriginalAmount']) ? (float)$order['OriginalAmount'] : (float)$order['TotalAmount'];
+                $totAmt   = (float)$order['TotalAmount'];
+                $hasPromo = !empty($order['PromoName']) && $origAmt > $totAmt;
+                $discAmt  = $origAmt - $totAmt;
+                ?>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-secondary">Tạm tính</span>
+                    <span><?= number_format($origAmt, 0, ',', '.') ?> đ</span>
+                </div>
+                <?php if ($hasPromo): ?>
+                <div class="d-flex justify-content-between mb-2">
+                    <span style="color:#198754;">Giảm giá
+                        <small style="color:#6c757d;display:block;"><?= htmlspecialchars($order['PromoName']) ?> (-<?= (int)$order['PromoDiscounted'] ?>%)</small>
+                    </span>
+                    <span style="color:#198754;font-weight:500;">- <?= number_format($discAmt, 0, ',', '.') ?> đ</span>
+                </div>
+                <?php endif; ?>
+                <hr>
+                <div class="d-flex justify-content-between">
+                    <span class="fw-bold">Tổng cộng</span>
+                    <span style="color:#dc3545;font-weight:700;"><?= number_format($totAmt, 0, ',', '.') ?> đ</span>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<style>
-    /* Order Timeline Styles */
-    .order-timeline {
-        padding: 20px 0;
-        position: relative;
-    }
+<!-- SẢN PHẨM TRONG ĐƠN -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-semibold">Sản phẩm trong đơn</h5>
+        <span class="badge bg-primary rounded-pill"><?= count($orderDetails) ?> sản phẩm</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th width="5%">STT</th>
+                        <th width="12%">Ảnh</th>
+                        <th>Sản phẩm</th>
+                        <th width="8%" class="text-center">SL</th>
+                        <th width="15%" class="text-end">Đơn giá</th>
+                        <th width="15%" class="text-end">Thành tiền</th>
+                        <th width="8%" class="text-center"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($orderDetails as $i => $item): ?>
+                    <tr>
+                        <td><?= $i + 1 ?></td>
+                        <td><img src="<?= $item['ImageURL'] ?>" alt="" style="width:65px;height:85px;object-fit:cover;border-radius:4px;"></td>
+                        <td>
+                            <div class="fw-medium"><?= htmlspecialchars($item['ProductName']) ?></div>
+                            <div class="text-secondary small">
+                                <div>Tác giả: <?= htmlspecialchars($item['Author']) ?></div>
+                                <div>Thể loại: <?= htmlspecialchars($item['Category']) ?></div>
+                            </div>
+                        </td>
+                        <td class="text-center"><?= $item['Quantity'] ?></td>
+                        <td class="text-end"><?= number_format($item['Price'], 0, ',', '.') ?> đ</td>
+                        <td class="text-end fw-bold"><?= number_format($item['Price'] * $item['Quantity'], 0, ',', '.') ?> đ</td>
+                        <td class="text-center">
+                            <a href="/admin/products/product-detail?id=<?= $item['ProductID'] ?>"
+                               class="btn btn-sm btn-outline-primary" title="Xem sản phẩm">
+                                <i class="fas fa-external-link-alt"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
-    .timeline-steps {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 15px;
-    }
-
-    .timeline-step {
-        text-align: center;
-        position: relative;
-        width: 33%;
-        opacity: 0.5;
-        transition: all 0.3s ease;
-    }
-
-    .timeline-step.active {
-        opacity: 1;
-    }
-
-    .timeline-step.canceled {
-        color: var(--bs-danger);
-    }
-
-    .timeline-step-icon {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        background-color: #f8f9fa;
-        margin: 0 auto;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.25rem;
-        color: #6c757d;
-        position: relative;
-        z-index: 2;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-        transition: all 0.3s ease;
-    }
-
-    .timeline-step.active .timeline-step-icon {
-        background: linear-gradient(45deg, #ff6b6b, #cc2b5e);
-        color: white;
-        transform: scale(1.1);
-        box-shadow: 0 4px 10px rgba(204, 43, 94, 0.3);
-    }
-
-    .timeline-step.canceled .timeline-step-icon {
-        background-color: #f8d7da;
-        color: #dc3545;
-    }
-
-    .timeline-step-label {
-        margin-top: 8px;
-        font-weight: 500;
-    }
-
-    .timeline-step-date {
-        font-size: 0.75rem;
-        color: #6c757d;
-    }
-
-    /* Order Detail Styles */
-    .order-detail-card {
-        border: 1px solid #e9ecef;
-        border-radius: 10px;
-        padding: 15px;
-        height: 100%;
-        transition: all 0.3s ease;
-        background-color: #fff;
-    }
-
-    .order-detail-card:hover {
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-        border-color: #dee2e6;
-        transform: translateY(-3px);
-    }
-
-    .order-detail-title {
-        margin-bottom: 15px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid #e9ecef;
-        color: #495057;
-        font-weight: 600;
-    }
-
-    .order-detail-content p {
-        margin-bottom: 8px;
-    }
-
-    /* Customer Order History Styles */
-    .customer-orders-list {
-        max-height: 300px;
-        overflow-y: auto;
-        padding-right: 5px;
-    }
-
-    .customer-orders-list::-webkit-scrollbar {
-        width: 5px;
-    }
-
-    .customer-orders-list::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 10px;
-    }
-
-    .customer-orders-list::-webkit-scrollbar-thumb {
-        background: #c1c1c1;
-        border-radius: 10px;
-    }
-
-    .customer-orders-list::-webkit-scrollbar-thumb:hover {
-        background: #a8a8a8;
-    }
-
-    .customer-order-item {
-        padding: 10px;
-        border-bottom: 1px solid #e9ecef;
-        transition: all 0.2s ease;
-    }
-
-    .customer-order-item:hover {
-        background-color: #f8f9fa;
-    }
-
-    .customer-order-item:last-child {
-        border-bottom: none;
-    }
-
-    /* Progress Bar Gradient */
-    .progress {
-        height: 5px;
-        overflow: hidden;
-        border-radius: 10px;
-    }
-
-    .bg-gradient {
-        background: linear-gradient(to right, #ff6b6b, #cc2b5e);
-        box-shadow: 0 2px 5px rgba(204, 43, 94, 0.2);
-    }
-
-    /* Order Actions */
-    .order-actions {
-        padding: 20px;
-        background-color: #f8f9fa;
-        border-radius: 10px;
-        border: 1px solid #e9ecef;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-    }
-
-    /* Table styles */
-    .table {
-        border-collapse: separate;
-        border-spacing: 0;
-    }
-
-    .table th {
-        font-weight: 600;
-        color: #495057;
-    }
-
-    .table tbody tr {
-        transition: all 0.2s;
-    }
-
-    .table tbody tr:hover {
-        background-color: rgba(0, 123, 255, 0.03);
-    }
-
-    .item-number {
-        width: 30px;
-        height: 30px;
-        background-color: #f8f9fa;
-        color: #6c757d;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 600;
-        font-size: 0.8rem;
-    }
-
-    /* Status badges */
-    .status-badge {
-        padding: 0.4em 0.8em;
-        border-radius: 30px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        display: inline-block;
-    }
-
-    .status-badge.small {
-        font-size: 0.7rem;
-        padding: 0.2em 0.6em;
-    }
-
-    .status-pending {
-        background-color: #fff3cd;
-        color: #856404;
-    }
-
-    .status-info {
-        background-color: #d1ecf1;
-        color: #0c5460;
-    }
-
-    .status-success {
-        background-color: #d4edda;
-        color: #155724;
-    }
-
-    .status-error {
-        background-color: #f8d7da;
-        color: #721c24;
-    }
-</style>
+</div><!-- end container-fluid -->
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        // Initialize tooltips
-        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
-        });
-
-        // Handle print order
-        /* document.getElementById('printOrder').addEventListener('click', function () {
-            Swal.fire({
-                title: 'In đơn hàng',
-                text: 'Đang chuẩn bị in đơn hàng < ?= $order['OrderID'] ?>',
-        icon: 'info',
-            showCancelButton: false,
-                confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'OK'
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('[title]').forEach(function(el) {
+        new bootstrap.Tooltip(el);
     });
-        }); */
-
-        // Handle order status update
-        const updateOrderStatusForm = document.getElementById('updateOrderStatusForm');
-        if (updateOrderStatusForm) {
-            updateOrderStatusForm.addEventListener('submit', function (e) {
-                e.preventDefault();
-
-                const formData = new FormData(this);
-
-                fetch(this.action, {
-                    method: 'POST',
-                    body: formData
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            Swal.fire({
-                                title: 'Thành công!',
-                                text: data.message,
-                                icon: 'success',
-                                confirmButtonColor: '#3085d6',
-                                confirmButtonText: 'OK'
-                            }).then((result) => {
-                                if (result.isConfirmed) {
-                                    window.location.reload();
-                                }
-                            });
-                        } else {
-                            Swal.fire({
-                                title: 'Lỗi!',
-                                text: data.message,
-                                icon: 'error',
-                                confirmButtonColor: '#3085d6',
-                                confirmButtonText: 'OK'
-                            });
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        Swal.fire({
-                            title: 'Lỗi!',
-                            text: 'Đã xảy ra lỗi khi cập nhật trạng thái đơn hàng.',
-                            icon: 'error',
-                            confirmButtonColor: '#3085d6',
-                            confirmButtonText: 'OK'
-                        });
-                    });
-            });
-        }
-    });
+});
 </script>

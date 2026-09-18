@@ -3,6 +3,7 @@ require_once __DIR__ . '/../models/Order.php';
 require_once __DIR__ . '/../models/Address.php';
 require_once __DIR__ . '/../models/PaymentMethod.php';
 require_once __DIR__ . '/../models/OrderDetail.php';
+require_once __DIR__ . '/../models/Promo.php';
 require_once __DIR__ . '/BaseController.php';
 
 class OrderController extends BaseController
@@ -11,12 +12,15 @@ class OrderController extends BaseController
     private $addressModel;
     private $paymentMethodModel;
     private $orderDetailModel;
+    private $promoModel;
+
     public function __construct()
     {
         $this->orderModel = new Order();
         $this->addressModel = new Address();
         $this->paymentMethodModel = new PaymentMethod();
         $this->orderDetailModel = new OrderDetail();
+        $this->promoModel = new Promo();
     }
 
     // Hiển thị danh sách đơn hàng
@@ -116,7 +120,6 @@ class OrderController extends BaseController
             return;
         }
 
-
         $userId = $_SESSION['UserID'];
         $addressId = 0;
         $paymentMethodId = $_POST['payment_method_id'];
@@ -133,13 +136,30 @@ class OrderController extends BaseController
             $addressId = $_POST['address_id']; // Dùng địa chỉ hiện có
         }
 
-        // Tính tổng tiền đơn hàng
-        $totalAmount = array_reduce($_SESSION['cart'], function ($sum, $item) {
+        // Tính tổng tiền đơn hàng (trước giảm giá)
+        $subtotal = array_reduce($_SESSION['cart'], function ($sum, $item) {
             return $sum + ($item['quantity'] * $item['price']);
         }, 0);
 
+        // Xử lý mã promo
+        $promoId = null;
+        $promoCode = trim($_POST['promo_code'] ?? '');
+        $totalAmount = $subtotal;
+
+        if (!empty($promoCode)) {
+            $promo = $this->promoModel->getActivePromoByName($promoCode);
+            if ($promo) {
+                $promoId = $promo['PromoID'];
+                $discount = ($subtotal * $promo['Discounted']) / 100;
+                $totalAmount = $subtotal - $discount;
+            } else {
+                $this->responseJson(['success' => false, 'message' => 'Mã khuyến mãi không hợp lệ hoặc đã hết hạn.']);
+                return;
+            }
+        }
+
         // Lưu đơn hàng vào database
-        $orderId = $this->orderModel->createOrder($userId, $totalAmount, $addressId, $paymentMethodId);
+        $orderId = $this->orderModel->createOrder($userId, $totalAmount, $addressId, $paymentMethodId, $promoId, $subtotal);
         if (!$orderId) {
             $this->responseJson(['success' => false, 'message' => 'Lỗi khi tạo đơn hàng']);
             return;

@@ -1,6 +1,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title><?= isset($page_title) ? $page_title : 'MeepBookery' ?></title>
+<title><?= isset($page_title) ? $page_title : 'RakiBookery' ?></title>
 
 <!-- Favicon -->
 <link rel="icon" href="/img/logo.jpg" type="image/jpeg">

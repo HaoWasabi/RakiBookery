@@ -1,4 +1,4 @@
-<!-- Đơn hàng - MeepBookery -->
+<!-- Đơn hàng - RakiBookery -->
 <section class="order-history-section">
     <div class="container">
         <div class="col-lg-12">

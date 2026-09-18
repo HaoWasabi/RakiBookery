@@ -105,7 +105,7 @@
                                 <div class="mb-4 form-check">
                                     <input type="checkbox" class="form-check-input" id="agreeTerms" required>
                                     <label class="form-check-label" for="agreeTerms">
-                                        Bằng việc đăng ký, bạn đã đồng ý với MeepBookery về
+                                        Bằng việc đăng ký, bạn đã đồng ý với RakiBookery về
                                         <a href="#" class="text-danger">Điều khoản dịch vụ</a> &
                                         <a href="#" class="text-danger">Chính sách bảo mật</a>
                                     </label>

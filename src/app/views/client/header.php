@@ -11,7 +11,7 @@
 
             <!-- Cột chào mừng -->
             <div class="col-md-6 text-center fw-bold">
-                <span>Chào mừng bạn đến với MeepBookery</span>
+                <span>Chào mừng bạn đến với RakiBookery</span>
             </div>
 
             <!-- Cột liên hệ -->
@@ -39,7 +39,7 @@
             <!-- Logo -->
             <div class="logo me-3">
                 <a href="/">
-                    <img src="../../img/logo.JPG" alt="MeepBookery Logo" class="img-fluid">
+                    <img src="../../img/logo.JPG" alt="RakiBookery Logo" class="img-fluid">
                 </a>
             </div>
 

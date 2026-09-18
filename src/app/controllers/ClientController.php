@@ -25,7 +25,7 @@ class ClientController extends BaseController
     public function index()
     {
         $this->data['bestSellerBooks'] = $this->bookModel->getTopBestSellingBooks(4);
-        $this->renderView('home', 'MeepBookery');
+        $this->renderView('home', 'RakiBookery');
     }
 
     public function shop()

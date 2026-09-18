@@ -53,12 +53,20 @@ elseif ($requestUri === "/api/orders/filtered") {
 // Promo Controller routes
 elseif ($requestUri === "/admin/promos") {
     $adminController->promos();
-} elseif ($requestUri === "/admin/promos/add") {
+} elseif ($requestUri === "/admin/promos/add" && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $promoController->addPromo();
+} elseif ($requestUri === "/admin/promos/add") {
+    $adminController->addPromoPage();
 } elseif ($requestUri === "/admin/promos/update") {
     $promoController->updatePromo();
 } elseif ($requestUri === "/admin/promos/delete") {
     $promoController->deletePromo();
+} elseif ($requestUri === "/admin/promos/restore") {
+    $promoController->restorePromo();
+} elseif ($requestUri === "/admin/promos/data") {
+    $promoController->getPromosData();
+} elseif ($requestUri === "/api/promos/validate") {
+    $promoController->validatePromo();
 }
 // Order processing routes
 elseif ($_SERVER["REQUEST_URI"] === "/process_checkout") {
@@ -134,6 +142,8 @@ elseif ($requestUri === "/admin/users") {
 // Admin statistics routes
 elseif ($requestUri === "/admin/top-customers") {
     $adminController->topCustomers();
+} elseif ($requestUri === "/admin/promos/promo") {
+    $adminController->viewPromo();
 } elseif (strpos($requestUri, "/admin") === 0) {
     $adminController->notFound();
 }

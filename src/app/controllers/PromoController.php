@@ -91,14 +91,76 @@ class PromoController extends BaseController
         if ($this->promoModel->delete($id)) {
             $this->responseJson([
                 'success' => true,
-                'message' => 'Xóa khuyến mãi thành công',
-                'redirect' => '/admin/promos'
+                'message' => 'Đã ẩn khuyến mãi thành công.'
             ]);
         } else {
             $this->responseJson([
                 'success' => false,
-                'message' => 'Xóa khuyến mãi thất bại. Vui lòng thử lại sau.'
+                'message' => 'Ẩn khuyến mãi thất bại. Vui lòng thử lại sau.'
             ]);
         }
+    }
+
+    public function restorePromo()
+    {
+        $this->requirePost();
+
+        $data = $this->getRequestData();
+        $id = $data['id'] ?? null;
+
+        if ($id === null) {
+            $this->responseJson([
+                'success' => false,
+                'message' => 'Thiếu ID khuyến mãi.'
+            ]);
+            return;
+        }
+
+        if ($this->promoModel->restore($id)) {
+            $this->responseJson([
+                'success' => true,
+                'message' => 'Đã hiện khuyến mãi thành công.'
+            ]);
+        } else {
+            $this->responseJson([
+                'success' => false,
+                'message' => 'Hiện khuyến mãi thất bại. Vui lòng thử lại sau.'
+            ]);
+        }
+    }
+
+    public function validatePromo()
+    {
+        $data = $this->getRequestData();
+        $code = trim($data['code'] ?? '');
+
+        if (empty($code)) {
+            $this->responseJson(['success' => false, 'message' => 'Vui lòng nhập mã khuyến mãi.']);
+            return;
+        }
+
+        $promo = $this->promoModel->getActivePromoByName($code);
+
+        if ($promo) {
+            $this->responseJson([
+                'success' => true,
+                'promo' => [
+                    'id'         => $promo['PromoID'],
+                    'name'       => $promo['Name'],
+                    'discounted' => (int) $promo['Discounted'],
+                ]
+            ]);
+        } else {
+            $this->responseJson(['success' => false, 'message' => 'Mã khuyến mãi không hợp lệ hoặc đã hết hạn.']);
+        }
+    }
+
+    public function getPromosData()
+    {
+        $promos = $this->promoModel->getAll();
+        $this->responseJson([
+            'success' => true,
+            'promos'  => $promos
+        ]);
     }
 }

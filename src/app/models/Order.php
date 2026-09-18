@@ -17,14 +17,18 @@ class Order
     }
 
     // 1. Hàm tạo đơn hàng
-    public function createOrder($userId, $totalAmount, $addressId, $paymentMethodId)
+    public function createOrder($userId, $totalAmount, $addressId, $paymentMethodId, $promoId = null, $originalAmount = null)
     {
         try {
+            // Nếu không truyền originalAmount thì mặc định bằng totalAmount (không có promo)
+            if ($originalAmount === null) {
+                $originalAmount = $totalAmount;
+            }
             $stmt = $this->conn->prepare("
-            INSERT INTO `Order` (UserID, TotalAmount, AddressID, PaymentMethodID) 
-            VALUES (?, ?, ?, ?)
+            INSERT INTO `Order` (UserID, TotalAmount, OriginalAmount, AddressID, PaymentMethodID, PromoID) 
+            VALUES (?, ?, ?, ?, ?, ?)
         ");
-            $stmt->execute([$userId, $totalAmount, $addressId, $paymentMethodId]);
+            $stmt->execute([$userId, $totalAmount, $originalAmount, $addressId, $paymentMethodId, $promoId]);
             return $this->conn->lastInsertId();
         } catch (PDOException $e) {
             error_log("Lỗi tạo đơn hàng: " . $e->getMessage());
@@ -294,17 +298,19 @@ class Order
     public function getOrderById($orderId, $userId = null)
     {
         try {
-            // Lấy thông tin đơn hàng + User
+            // Lấy thông tin đơn hàng + User + Promo
             $sql = "
                     SELECT 
-                        o.OrderID, o.OrderDate, o.Status, o.TotalAmount,
+                        o.OrderID, o.OrderDate, o.Status, o.TotalAmount, o.OriginalAmount,
                         u.UserID, u.Name AS UserName, u.Email, u.Phone,
                         a.Address, a.City, a.District, a.Ward,
-                        pm.Name AS PaymentMethod
+                        pm.Name AS PaymentMethod,
+                        p.PromoID, p.Name AS PromoName, p.Discounted AS PromoDiscounted
                     FROM `Order` o
                     JOIN User u ON o.UserID = u.UserID
                     JOIN Address a ON o.AddressID = a.AddressID
                     JOIN PaymentMethod pm ON o.PaymentMethodID = pm.PaymentMethodID
+                    LEFT JOIN Promo p ON o.PromoID = p.PromoID
                     WHERE o.OrderID = ?
                     ";
 

@@ -1,4 +1,4 @@
-<!-- $title = "Liên hệ - MeepBookery"; -->
+<!-- $title = "Liên hệ - RakiBookery"; -->
 
 <!-- Contact Banner -->
 <section class="contact-banner py-3 bg-light">
@@ -21,7 +21,7 @@
                 <h2 class="section-title">Chúng tôi luôn sẵn sàng hỗ trợ bạn</h2>
                 <div class="separator mx-auto"></div>
                 <p class="lead mt-4">Hãy liên hệ với chúng tôi nếu bạn có bất kỳ câu hỏi hoặc thắc mắc nào. Đội ngũ hỗ
-                    trợ khách hàng của MeepBookery luôn sẵn sàng hỗ trợ bạn.</p>
+                    trợ khách hàng của RakiBookery luôn sẵn sàng hỗ trợ bạn.</p>
             </div>
         </div>
         <div class="row">
@@ -31,7 +31,7 @@
                         <i class="fas fa-map-marker-alt fa-3x text-danger"></i>
                     </div>
                     <h3>Địa chỉ</h3>
-                    <p>MeepBookery Bookstore<br>273 Đ. An Dương Vương, Phường 2, Quận 5<br>TP. Hồ Chí Minh, Việt Nam
+                    <p>RakiBookery Bookstore<br>273 Đ. An Dương Vương, Phường 2, Quận 5<br>TP. Hồ Chí Minh, Việt Nam
                     </p>
                 </div>
             </div>
@@ -50,8 +50,8 @@
                         <i class="fas fa-envelope fa-3x text-danger"></i>
                     </div>
                     <h3>Email</h3>
-                    <p>Hỗ trợ khách hàng: support@meepbookery.com<br>Kinh doanh: sales@meepbookery.com<br>Nhân sự:
-                        hr@meepbookery.com</p>
+                    <p>Hỗ trợ khách hàng: support@rakibookery.com<br>Kinh doanh: sales@rakibookery.com<br>Nhân sự:
+                        hr@rakibookery.com</p>
                 </div>
             </div>
         </div>
@@ -215,7 +215,7 @@
                             <div class="accordion-body">
                                 Chúng tôi có chính sách đổi/trả trong vòng 7 ngày kể từ ngày nhận hàng. Nếu sách của bạn
                                 bị lỗi sản xuất, sai sách, hoặc bị hư hỏng trong quá trình vận chuyển, vui lòng liên hệ
-                                với đội ngũ hỗ trợ khách hàng của chúng tôi qua email support@meepbookery.com hoặc
+                                với đội ngũ hỗ trợ khách hàng của chúng tôi qua email support@rakibookery.com hoặc
                                 hotline (+84) 0123456789 để được hướng dẫn thủ tục đổi/trả.
                             </div>
                         </div>
@@ -224,13 +224,13 @@
                         <h2 class="accordion-header" id="headingThree">
                             <button class="accordion-button collapsed rounded" type="button" data-bs-toggle="collapse"
                                 data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
-                                <i class="fas fa-store me-2 text-danger"></i> MeepBookery có cửa hàng trực tiếp không?
+                                <i class="fas fa-store me-2 text-danger"></i> RakiBookery có cửa hàng trực tiếp không?
                             </button>
                         </h2>
                         <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree"
                             data-bs-parent="#faqAccordion">
                             <div class="accordion-body">
-                                Hiện tại, MeepBookery có một cửa hàng trực tiếp tại TP.HCM.
+                                Hiện tại, RakiBookery có một cửa hàng trực tiếp tại TP.HCM.
                                 Bạn có thể ghé thăm cửa hàng của chúng tôi tại địa chỉ: 273 Đ. An Dương Vương, Phường 2,
                                 Quận 5. Chúng tôi đang có kế hoạch mở rộng hệ thống cửa hàng ở nhiều tỉnh thành khác
                                 trong thời gian tới.
@@ -248,7 +248,7 @@
                         <div id="collapseFour" class="accordion-collapse collapse" aria-labelledby="headingFour"
                             data-bs-parent="#faqAccordion">
                             <div class="accordion-body">
-                                Ngoài thanh toán khi nhận hàng (COD), MeepBookery còn hỗ trợ các phương thức thanh toán
+                                Ngoài thanh toán khi nhận hàng (COD), RakiBookery còn hỗ trợ các phương thức thanh toán
                                 sau: Thẻ tín dụng/ghi nợ (Visa, MasterCard, JCB), Chuyển khoản ngân hàng, Ví điện tử
                                 (MoMo, ZaloPay, VNPay), và Thanh toán qua các ứng dụng ngân hàng. Chúng tôi luôn cập
                                 nhật thêm các phương thức thanh toán mới để thuận tiện cho khách hàng.
@@ -267,7 +267,7 @@
         <div class="row align-items-center">
             <div class="col-lg-8" data-aos="fade-right">
                 <h3 class="mb-1">Đăng ký nhận thông tin</h3>
-                <p class="mb-0">Hãy đăng ký để nhận thông tin về sách mới và ưu đãi từ MeepBookery.</p>
+                <p class="mb-0">Hãy đăng ký để nhận thông tin về sách mới và ưu đãi từ RakiBookery.</p>
             </div>
             <div class="col-lg-4 mt-3 mt-lg-0" data-aos="fade-left">
                 <form class="newsletter-form d-flex">

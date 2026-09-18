@@ -160,8 +160,8 @@
         </form>
     </div>
     <footer class="footer">
-        <p>© 2025 Meep Bookery. All rights reserved.</p>
-        <p>Contact us: info@meepbookery.com | +123 456 789</p>
+        <p>© 2025 RakiBookery. All rights reserved.</p>
+        <p>Contact us: info@rakibookery.com | +123 456 789</p>
     </footer>
     <script>
         document.getElementById("changeAddress")?.addEventListener("click", function() {

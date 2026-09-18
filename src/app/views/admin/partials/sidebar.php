@@ -4,9 +4,9 @@
         <div class="sidebar-header d-flex justify-content-between align-items-center mb-4">
             <div class="d-flex align-items-center logo-container">
                 <div class="logo-wrapper">
-                    <img src="/img/logo.jpg" alt="MeepBookery Logo" class="img-fluid rounded-circle shadow-sm logo-img">
+                    <img src="/img/logo.jpg" alt="RakiBookery Logo" class="img-fluid rounded-circle shadow-sm logo-img">
                 </div>
-                <h5 class="ms-2 mb-0 text-white fw-bold logo-text">Meepbookery</h5>
+                <h5 class="ms-2 mb-0 text-white fw-bold logo-text">RakiBookery</h5>
             </div>
         </div>
 
@@ -79,6 +79,15 @@
                             <i class="fa-duotone fa-users menu-icon"></i>
                         </span>
                         <span class="nav-text">Quản lý người dùng</span>
+                    </a>
+                </li>
+                <li class="nav-item mb-1">
+                    <a href="/admin/promos"
+                        class="nav-link d-flex align-items-center <?= $active_menu === 'promos' ? 'active' : '' ?>">
+                        <span class="menu-icon-wrapper">
+                            <i class="fa-solid fa-tag menu-icon"></i>
+                        </span>
+                        <span class="nav-text">Quản lý khuyến mãi</span>
                     </a>
                 </li>
             </ul>

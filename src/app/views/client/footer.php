@@ -3,7 +3,7 @@
     <div class="container">
         <div class="row">
             <div class="col-md-5">
-                <h5>MeepBookery</h5>
+                <h5>RakiBookery</h5>
                 <p>Nhà sách trực tuyến hàng đầu Việt Nam</p>
                 <div class="social-links">
                     <a href="#" class="text-white me-2"><i class="fab fa-facebook-f"></i></a>
@@ -29,7 +29,7 @@
         </div>
         <hr>
         <div class="text-center">
-            <p>© 2025 MeepBookery. All rights reserved.</p>
+            <p>© 2025 RakiBookery. All rights reserved.</p>
         </div>
     </div>
 </footer>

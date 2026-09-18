@@ -1,4 +1,4 @@
-<!-- Chi tiết đơn hàng - MeepBookery -->
+<!-- Chi tiết đơn hàng - RakiBookery -->
 
 <!-- Order Detail Banner -->
 <section class="order-detail-banner bg-light">
@@ -263,23 +263,30 @@
 
                         <div class="order-summary">
                             <hr>
+                            <?php
+                            $originalAmount = isset($order['OriginalAmount']) ? (float)$order['OriginalAmount'] : (float)$order['TotalAmount'];
+                            $totalAmount    = (float)$order['TotalAmount'];
+                            $hasPromo       = !empty($order['PromoName']) && $originalAmount > $totalAmount;
+                            $discountAmount = $originalAmount - $totalAmount;
+                            ?>
                             <div class="d-flex justify-content-between mb-2">
                                 <span>Tạm tính</span>
-                                <span><?= number_format((float) $order['TotalAmount'], 0, ',', '.') ?>đ</span>
+                                <span><?= number_format($originalAmount, 0, ',', '.') ?>đ</span>
                             </div>
-                            <!-- <div class="d-flex justify-content-between mb-2">
-                                <span>Phí vận chuyển</span>
-                                <span>0đ</span>
+                            <?php if ($hasPromo): ?>
+                            <div class="d-flex justify-content-between mb-2 text-success">
+                                <span>
+                                    Giảm giá
+                                    <small class="text-muted">(<?= htmlspecialchars($order['PromoName']) ?>
+                                        -<?= (int)$order['PromoDiscounted'] ?>%)</small>
+                                </span>
+                                <span>- <?= number_format($discountAmount, 0, ',', '.') ?>đ</span>
                             </div>
-                            <div class="d-flex justify-content-between mb-2">
-                                <span>Giảm giá</span>
-                                <span>0đ</span>
-                            </div> -->
+                            <?php endif; ?>
                             <hr>
                             <div class="d-flex justify-content-between mb-0">
                                 <span class="fw-bold">Tổng cộng</span>
-                                <span
-                                    class="fw-bold text-danger"><?= number_format((float) $order['TotalAmount'], 0, ',', '.') ?>đ</span>
+                                <span class="fw-bold text-danger"><?= number_format($totalAmount, 0, ',', '.') ?>đ</span>
                             </div>
                         </div>
                     </div>

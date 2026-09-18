@@ -274,6 +274,31 @@ class AdminController extends BaseController
 
         $this->renderView('promos', 'Quản lý khuyến mãi', 'promos');
     }
+
+    public function addPromoPage()
+    {
+        $this->checkAdminAuth();
+        $this->renderView('add-promo', 'Thêm khuyến mãi mới', 'promos');
+    }
+
+    public function viewPromo()
+    {
+        $this->checkAdminAuth();
+
+        $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+
+        if (!$id) {
+            $this->redirect('/admin/promos');
+        }
+
+        $this->data['promo'] = $this->promoModel->getPromoById($id);
+
+        if (!$this->data['promo']) {
+            $this->redirect('/admin/promos');
+        }
+
+        $this->renderView('edit-promo', 'Chỉnh sửa khuyến mãi', 'promos');
+    }
     public function notFound()
     {
         // $this->renderView('/error/404', '404 - Trang không tìm thấy', '');

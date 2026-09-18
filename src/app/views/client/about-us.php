@@ -1,4 +1,4 @@
-<!-- "Giới thiệu - MeepBookery"; -->
+<!-- "Giới thiệu - RakiBookery"; -->
 <?php $foundedYear = 2024; ?>
 <!-- About Us Banner -->
 <section class="about-banner py-2 bg-light">
@@ -30,11 +30,11 @@
             <div class="col-lg-6" data-aos="fade-left">
                 <div class="about-content ps-lg-4">
                     <h6 class="text-danger fw-bold">CÂU CHUYỆN CỦA CHÚNG TÔI</h6>
-                    <h2 class="mb-4">MeepBookery - Hành trình của đam mê sách</h2>
-                    <p class="lead">MeepBookery được thành lập vào năm <?= $foundedYear ?>, với khởi đầu khiêm tốn là
+                    <h2 class="mb-4">RakiBookery - Hành trình của đam mê sách</h2>
+                    <p class="lead">RakiBookery được thành lập vào năm <?= $foundedYear ?>, với khởi đầu khiêm tốn là
                         một hiệu sách nhỏ
                         tại trung tâm thành phố Hồ Chí Minh.</p>
-                    <p>Từ một cửa hàng nhỏ với vài trăm đầu sách, MeepBookery đã phát triển mạnh mẽ và trở thành một
+                    <p>Từ một cửa hàng nhỏ với vài trăm đầu sách, RakiBookery đã phát triển mạnh mẽ và trở thành một
                         trong những hiệu sách trực tuyến lớn nhất Việt Nam, với hơn 20.000 đầu sách đa dạng từ nhiều thể
                         loại khác nhau.</p>
                     <p>Chúng tôi tự hào mang đến cho độc giả những tác phẩm chất lượng từ các tác giả nổi tiếng trong
@@ -144,7 +144,7 @@
         <div class="row justify-content-center mb-5">
             <div class="col-lg-8 text-center" data-aos="fade-up">
                 <h6 class="text-danger fw-bold">ĐỘI NGŨ CỦA CHÚNG TÔI</h6>
-                <h2 class="section-title">Gặp gỡ những người đứng sau MeepBookery</h2>
+                <h2 class="section-title">Gặp gỡ những người đứng sau RakiBookery</h2>
                 <div class="separator mx-auto"></div>
                 <p class="lead mt-4">Đội ngũ tâm huyết của chúng tôi với niềm đam mê sách và cam kết mang đến trải
                     nghiệm tốt nhất cho khách hàng.</p>
@@ -255,7 +255,7 @@
                             <i class="fas fa-star"></i>
                             <i class="fas fa-star"></i>
                         </div>
-                        <p class="testimonial-text">"Tôi đã trở thành khách hàng thân thiết của MeepBookery được hơn 2
+                        <p class="testimonial-text">"Tôi đã trở thành khách hàng thân thiết của RakiBookery được hơn 2
                             năm. Tôi rất ấn tượng với sự đa dạng về đầu sách và chất lượng dịch vụ khách hàng tại đây.
                             Mỗi đơn hàng đều được đóng gói cẩn thận và giao đến tận tay một cách nhanh chóng."</p>
                     </div>
@@ -279,7 +279,7 @@
                             <i class="fas fa-star"></i>
                             <i class="fas fa-star"></i>
                         </div>
-                        <p class="testimonial-text">"MeepBookery là thiên đường cho những người yêu sách như tôi. Tôi
+                        <p class="testimonial-text">"RakiBookery là thiên đường cho những người yêu sách như tôi. Tôi
                             thích cách họ sắp xếp và giới thiệu sách theo từng chủ đề, giúp tôi dễ dàng tìm kiếm những
                             cuốn sách phù hợp. Chương trình khách hàng thân thiết cũng rất hấp dẫn với nhiều ưu đãi."
                         </p>
@@ -305,7 +305,7 @@
                             <i class="fas fa-star-half-alt"></i>
                         </div>
                         <p class="testimonial-text">"Là một phụ huynh, tôi rất quan tâm đến việc tìm kiếm sách hay cho
-                            con. MeepBookery có một bộ sưu tập sách thiếu nhi phong phú với nhiều tựa sách chất lượng.
+                            con. RakiBookery có một bộ sưu tập sách thiếu nhi phong phú với nhiều tựa sách chất lượng.
                             Tôi đặc biệt thích các sự kiện định kỳ dành cho trẻ em mà họ tổ chức tại cửa hàng."</p>
                     </div>
                     <div class="testimonial-author d-flex align-items-center">
@@ -372,7 +372,7 @@
     <div class="container">
         <div class="row align-items-center">
             <div class="col-lg-8 mb-4 mb-lg-0" data-aos="fade-right">
-                <h2 class="mb-3">Khám phá kho tàng sách tại MeepBookery ngay hôm nay</h2>
+                <h2 class="mb-3">Khám phá kho tàng sách tại RakiBookery ngay hôm nay</h2>
                 <p class="lead mb-0">Với hơn 20.000 đầu sách đa dạng thể loại, chúng tôi cam kết mang đến cho bạn những
                     trải nghiệm đọc sách tuyệt vời nhất.</p>
             </div>
@@ -391,7 +391,7 @@
         <div class="row align-items-center">
             <div class="col-lg-8" data-aos="fade-right">
                 <h3 class="mb-1">Đăng ký nhận thông tin</h3>
-                <p class="mb-0">Hãy đăng ký để nhận thông tin về sách mới và ưu đãi từ MeepBookery.</p>
+                <p class="mb-0">Hãy đăng ký để nhận thông tin về sách mới và ưu đãi từ RakiBookery.</p>
             </div>
             <div class="col-lg-4 mt-3 mt-lg-0" data-aos="fade-left">
                 <form class="newsletter-form d-flex">

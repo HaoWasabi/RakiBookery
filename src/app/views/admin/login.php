@@ -32,9 +32,9 @@
         <div class="card">
             <div class="card-header">
                 <div class="logo-container">
-                    <img src="/img/logo.jpg" alt="MeepBookery Logo">
+                    <img src="/img/logo.jpg" alt="RakiBookery Logo">
                 </div>
-                <h4 class="mb-0">MeepBookery Admin</h4>
+                <h4 class="mb-0">RakiBookery Admin</h4>
             </div>
             <div class="card-body">
                 <form id="login-form">
@@ -72,7 +72,7 @@
         </div>
 
         <div class="login-footer text-white fw-bold">
-            <p>MeepBookery Admin Panel &copy; <?= date('Y') ?>. All rights reserved.</p>
+            <p>RakiBookery Admin Panel &copy; <?= date('Y') ?>. All rights reserved.</p>
         </div>
     </div>
 

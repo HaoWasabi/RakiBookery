@@ -220,6 +220,28 @@
                         <span id="orderShipping">30.000 ₫</span>
                     </div> -->
                     <hr>
+                    <div class="d-flex justify-content-between mb-3">
+                        <span>Tạm tính:</span>
+                        <span id="orderSubtotal" class="fw-bold">0 ₫</span>
+                    </div>
+
+                    <!-- Promo Code -->
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">Mã khuyến mãi</label>
+                        <div class="input-group input-group-sm">
+                            <input type="text" id="promoCodeInput" class="form-control"
+                                placeholder="Nhập mã khuyến mãi">
+                            <button class="btn btn-outline-secondary" type="button" id="applyPromoBtn">Áp dụng</button>
+                        </div>
+                        <div id="promoMessage" class="form-text mt-1"></div>
+                    </div>
+
+                    <div id="discountRow" class="d-flex justify-content-between mb-3 text-success d-none">
+                        <span id="discountLabel">Giảm giá (0%):</span>
+                        <span id="orderDiscount" class="fw-bold">- 0 ₫</span>
+                    </div>
+
+                    <hr>
                     <div class="d-flex justify-content-between mb-4">
                         <span class="h5">Tổng cộng:</span>
                         <span id="orderTotal" class="h5 text-danger">0 ₫</span>
@@ -381,23 +403,142 @@
             orderSummaryCount.textContent = `${totalItems} sản phẩm`;
             orderSubtotal.textContent = `${subtotal.toLocaleString()} ₫`;
 
-            const total = subtotal;
-            orderTotal.textContent = `${total.toLocaleString()} ₫`;
-
             // Store order summary for submission
             window.orderSummary = {
                 items: cartItems,
                 subtotal: subtotal,
-                total: total,
-                itemCount: totalItems
+                total: subtotal,
+                itemCount: totalItems,
+                promoCode: '',
+                discount: 0
             };
+
+            // Re-apply promo discount if already validated
+            applyCurrentPromo();
 
             // Sync cart to session
             syncCartToSession();
         }
 
+        // Promo state
+        // null = chưa áp dụng gì, object = hợp lệ, false = không hợp lệ
+        window.currentPromo = null;
+        // Trạng thái của ô promo: 'empty' | 'valid' | 'invalid'
+        window.promoState = 'empty';
+
+        function updatePlaceOrderButton() {
+            if (window.promoState === 'invalid') {
+                placeOrderButton.disabled = true;
+                placeOrderButton.title = 'Mã khuyến mãi không hợp lệ. Vui lòng xóa hoặc nhập mã đúng.';
+            } else {
+                placeOrderButton.disabled = false;
+                placeOrderButton.title = '';
+            }
+        }
+
+        // Khi người dùng thay đổi nội dung ô promo, reset trạng thái
+        document.getElementById('promoCodeInput').addEventListener('input', function () {
+            const val = this.value.trim();
+            if (val === '') {
+                window.currentPromo = null;
+                window.promoState = 'empty';
+                document.getElementById('promoMessage').textContent = '';
+                document.getElementById('promoMessage').className = 'form-text mt-1';
+                applyCurrentPromo();
+            } else {
+                // Có nội dung nhưng chưa bấm "Áp dụng" → coi như chưa hợp lệ
+                window.currentPromo = null;
+                window.promoState = 'invalid';
+                document.getElementById('promoMessage').className = 'form-text text-warning mt-1';
+                document.getElementById('promoMessage').textContent = 'Nhấn "Áp dụng" để kiểm tra mã.';
+                applyCurrentPromo();
+            }
+            updatePlaceOrderButton();
+        });
+
+        function applyCurrentPromo() {
+            if (!window.orderSummary) return;
+            const subtotal = window.orderSummary.subtotal;
+
+            if (window.currentPromo) {
+                const discount = Math.round(subtotal * window.currentPromo.discounted / 100);
+                const total = subtotal - discount;
+
+                document.getElementById('discountLabel').textContent =
+                    `Giảm giá (${window.currentPromo.discounted}% - ${window.currentPromo.name}):`;
+                document.getElementById('orderDiscount').textContent = `- ${discount.toLocaleString()} ₫`;
+                document.getElementById('discountRow').classList.remove('d-none');
+                orderTotal.textContent = `${total.toLocaleString()} ₫`;
+
+                window.orderSummary.discount = discount;
+                window.orderSummary.total = total;
+                window.orderSummary.promoCode = window.currentPromo.name;
+            } else {
+                document.getElementById('discountRow').classList.add('d-none');
+                orderTotal.textContent = `${subtotal.toLocaleString()} ₫`;
+                window.orderSummary.discount = 0;
+                window.orderSummary.total = subtotal;
+                window.orderSummary.promoCode = '';
+            }
+        }
+
+        // Apply promo button handler
+        document.getElementById('applyPromoBtn').addEventListener('click', function () {
+            const code = document.getElementById('promoCodeInput').value.trim();
+            const msgEl = document.getElementById('promoMessage');
+
+            if (!code) {
+                msgEl.className = 'form-text text-danger mt-1';
+                msgEl.textContent = 'Vui lòng nhập mã khuyến mãi.';
+                return;
+            }
+
+            this.disabled = true;
+            this.textContent = 'Đang kiểm tra...';
+
+            fetch('/api/promos/validate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    window.currentPromo = data.promo;
+                    window.promoState = 'valid';
+                    msgEl.className = 'form-text text-success mt-1';
+                    msgEl.textContent = `Áp dụng thành công! Giảm ${data.promo.discounted}%`;
+                } else {
+                    window.currentPromo = null;
+                    window.promoState = 'invalid';
+                    msgEl.className = 'form-text text-danger mt-1';
+                    msgEl.textContent = data.message;
+                }
+                applyCurrentPromo();
+                updatePlaceOrderButton();
+            })
+            .catch(() => {
+                window.promoState = 'invalid';
+                msgEl.className = 'form-text text-danger mt-1';
+                msgEl.textContent = 'Lỗi kết nối. Vui lòng thử lại.';
+                updatePlaceOrderButton();
+            })
+            .finally(() => {
+                this.disabled = false;
+                this.textContent = 'Áp dụng';
+            });
+        });
+
         // Handle place order button click
         placeOrderButton.addEventListener('click', function () {
+            // Chặn thanh toán nếu mã khuyến mãi không hợp lệ
+            if (window.promoState === 'invalid') {
+                errorAlert.classList.remove('d-none');
+                errorAlertMessage.textContent = 'Mã khuyến mãi không hợp lệ. Vui lòng xóa mã hoặc nhập mã đúng trước khi đặt hàng.';
+                document.getElementById('promoCodeInput').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                document.getElementById('promoCodeInput').focus();
+                return;
+            }
             // Get required fields based on which address section is visible
             let requiredFields;
             const isUsingNewAddress = document.getElementById('displayAddressSection') ?
@@ -474,6 +615,10 @@
             // Add payment method
             formData.append('payment_method_id', selectedPaymentMethod.value);
 
+            // Add promo code if applied
+            if (window.currentPromo) {
+                formData.append('promo_code', window.currentPromo.name);
+            }
             // Show loading state
             /* Swal.fire({
                 title: 'Đang xử lý',
@@ -612,6 +757,13 @@
         padding: 0.75rem;
         border-radius: 0.25rem;
         transition: all 0.2s;
+    }
+
+    /* Nút đặt hàng khi bị vô hiệu hóa do mã promo không hợp lệ */
+    #placeOrderButton:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        pointer-events: auto; /* giữ cursor hiển thị */
     }
 
     .payment-method-item:hover {

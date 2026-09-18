@@ -42,12 +42,12 @@ class Promo
         }
     }
 
-    public function create($name, $discounted, $datecreated)
+    public function create($name, $discounted, $datecreated, $status = 1)
     {
         try {
-            $query = "INSERT INTO " . $this->table . " (Name, Discounted, DateCreated) VALUES (?, ?, ?)";
+            $query = "INSERT INTO " . $this->table . " (Name, Discounted, DateCreated, Status) VALUES (?, ?, ?, ?)";
             $stmt = $this->conn->prepare($query);
-            return $stmt->execute([$name, $discounted, $datecreated]);
+            return $stmt->execute([$name, $discounted, $datecreated, $status]);
         } catch (PDOException $e) {
             error_log("Lỗi khi tạo khuyến mãi: " . $e->getMessage());
             return false;
@@ -69,11 +69,24 @@ class Promo
     public function delete($id)
     {
         try {
-            $query = "DELETE FROM " . $this->table . " WHERE PromoID = ?";
+            // Soft delete: chỉ đặt Status = 0, không xóa bản ghi
+            $query = "UPDATE " . $this->table . " SET Status = 0 WHERE PromoID = ?";
             $stmt = $this->conn->prepare($query);
             return $stmt->execute([$id]);
         } catch (PDOException $e) {
-            error_log("Lỗi khi xóa khuyến mãi: " . $e->getMessage());
+            error_log("Lỗi khi ẩn khuyến mãi: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function restore($id)
+    {
+        try {
+            $query = "UPDATE " . $this->table . " SET Status = 1 WHERE PromoID = ?";
+            $stmt = $this->conn->prepare($query);
+            return $stmt->execute([$id]);
+        } catch (PDOException $e) {
+            error_log("Lỗi khi hiện khuyến mãi: " . $e->getMessage());
             return false;
         }
     }
@@ -84,12 +97,13 @@ class Promo
             $name = $data['Name'] ?? '';
             $discounted = $data['Discounted'] ?? '';
             $datecreated = $data['DateCreated'] ?? '';
+            $status = isset($data['Status']) ? (int) $data['Status'] : 1;
 
             if (empty($name)) {
                 return false;
             }
 
-            return $this->create($name, $discounted, $datecreated);
+            return $this->create($name, $discounted, $datecreated, $status);
         } catch (PDOException $e) {
             error_log("Lỗi khi thêm khuyến mãi: " . $e->getMessage());
             return false;
@@ -102,7 +116,7 @@ class Promo
             $name = $data['Name'] ?? '';
             $discounted = $data['Discounted'] ?? '';
             $datecreated = $data['DateCreated'] ?? '';
-            $status = $data['Status'] ?? '';
+            $status = isset($data['Status']) ? (int) $data['Status'] : 0;
 
             if (empty($name)) {
                 return false;
@@ -140,6 +154,20 @@ class Promo
         } catch (PDOException $e) {
             error_log("Lỗi kiểm tra tên khuyến mãi tồn tại: " . $e->getMessage());
             return false;
+        }
+    }
+
+    // Lấy promo đang hoạt động theo tên (dùng khi validate mã ở checkout)
+    public function getActivePromoByName($name)
+    {
+        try {
+            $query = "SELECT * FROM " . $this->table . " WHERE Name = ? AND Status = 1 LIMIT 1";
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute([$name]);
+            return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        } catch (PDOException $e) {
+            error_log("Lỗi lấy promo theo tên: " . $e->getMessage());
+            return null;
         }
     }
 }
