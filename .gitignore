@@ -162,7 +162,7 @@ cython_debug/
 .idea/
 
 .env
-.env.example
+# .env.example được commit có chủ đích — là template cho team, không chứa giá trị thật
 .env.local
 .env.staging
 

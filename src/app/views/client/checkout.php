@@ -148,21 +148,33 @@
                 </div>
                 <div class="card-body">
                     <div class="payment-methods">
-                        <?php foreach ($payment_methods as $method): ?>
-                            <div class="form-check payment-method-item mb-3">
+                        <?php foreach ($payment_methods as $method): 
+                            $isPaypal = stripos($method['Name'], 'paypal') !== false;
+                            $isCod    = stripos($method['Name'], 'tiền mặt') !== false || stripos($method['Name'], 'cod') !== false;
+                        ?>
+                            <div class="form-check payment-method-item mb-3"<?= !$isPaypal ? ' style="display:none;"' : '' ?>>
                                 <input class="form-check-input" type="radio" name="paymentMethod"
-                                    id="payment-<?= $method['PaymentMethodID'] ?>" value="<?= $method['PaymentMethodID'] ?>"
+                                    id="payment-<?= $method['PaymentMethodID'] ?>"
+                                    value="<?= $method['PaymentMethodID'] ?>"
+                                    data-type="<?= $isPaypal ? 'paypal' : 'standard' ?>"
                                     <?= $method['PaymentMethodID'] == 1 ? 'checked' : '' ?>>
                                 <label class="form-check-label d-flex align-items-center"
                                     for="payment-<?= $method['PaymentMethodID'] ?>">
-                                    <?php if (stripos($method['Name'], 'tiền mặt') !== false || stripos($method['Name'], 'cod') !== false): ?>
+                                    <?php if ($isPaypal): ?>
+                                        <img src="https://www.paypalobjects.com/webstatic/mktg/Logo/pp-logo-100px.png"
+                                             alt="PayPal" height="20" class="me-2">
+                                    <?php elseif ($isCod): ?>
                                         <i class="fas fa-money-bill-wave text-success me-2"></i>
                                     <?php else: ?>
                                         <i class="fas fa-credit-card text-primary me-2"></i>
                                     <?php endif; ?>
                                     <?= htmlspecialchars($method['Name']) ?>
                                 </label>
-                                <?php if (stripos($method['Name'], 'tiền mặt') !== false || stripos($method['Name'], 'cod') !== false): ?>
+                                <?php if ($isPaypal): ?>
+                                    <div class="form-text ms-4">
+                                        Thanh toán qua ví PayPal hoặc thẻ Visa/Mastercard
+                                    </div>
+                                <?php elseif ($isCod): ?>
                                     <div class="form-text ms-4">Thanh toán khi nhận hàng</div>
                                 <?php else: ?>
                                     <div class="form-text ms-4">Thanh toán qua thẻ hoặc ví điện tử</div>
@@ -247,9 +259,14 @@
                         <span id="orderTotal" class="h5 text-danger">0 ₫</span>
                     </div>
                     <div class="d-grid gap-2">
+                        <!-- Nút đặt hàng thông thường (COD / các PTTT khác) -->
                         <button id="placeOrderButton" class="btn btn-danger btn-lg">
                             <i class="fas fa-shopping-bag me-2"></i>Đặt hàng
                         </button>
+
+                        <!-- PayPal Smart Buttons — chỉ hiện khi chọn PayPal -->
+                        <div id="paypal-button-container" class="d-none"></div>
+
                         <a href="/cart" class="btn btn-outline-secondary">
                             <i class="fas fa-arrow-left me-2"></i>Quay lại giỏ hàng
                         </a>
@@ -272,9 +289,8 @@
         const errorAlert = document.getElementById('checkoutErrorAlert');
         const errorAlertMessage = document.getElementById('errorAlertMessage');
 
-        // Function to sync localStorage cart to session
+        // Function to sync localStorage cart to session — trả về Promise
         function syncCartToSession() {
-            // Get cart data from localStorage
             const savedCart = localStorage.getItem('cart');
             let cartItems = [];
 
@@ -286,51 +302,44 @@
                     }
                 } catch (error) {
                     console.error('Error parsing cart data:', error);
-                    return false;
+                    return Promise.resolve(false);
                 }
             }
 
-            // If cart is empty, return false
             if (cartItems.length === 0) {
-                return false;
+                return Promise.resolve(false);
             }
 
-            // Convert cart items to session format
+            // Convert cart items to session format — dùng book.Price trực tiếp (số)
             const sessionCart = cartItems.map(item => {
-                // Find book details from allBooks array
                 const book = allBooks.find(b => b.BookID == item.id);
                 if (book) {
                     return {
                         product_id: item.id,
                         quantity: item.quantity,
-                        price: parseFloat((book.Price).toLocaleString('vi-VN'))
+                        price: parseFloat(book.Price) // Price là số, không dùng toLocaleString
                     };
                 }
                 return null;
-            }).filter(item => item !== null); // Remove null items
+            }).filter(item => item !== null);
 
-            // Send cart data to server to update session
-            fetch('/sync-cart', {
+            return fetch('/sync-cart', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest'
                 },
-                body: JSON.stringify({
-                    cart: sessionCart
-                })
+                body: JSON.stringify({ cart: sessionCart })
             })
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Cart synced to session:', data);
-                    return data.success;
-                })
-                .catch(error => {
-                    console.error('Error syncing cart to session:', error);
-                    return false;
-                });
-
-            return true;
+            .then(response => response.json())
+            .then(data => {
+                console.log('Cart synced to session:', data);
+                return data.success;
+            })
+            .catch(error => {
+                console.error('Error syncing cart to session:', error);
+                return false;
+            });
         }
 
         // Function to update checkout UI
@@ -374,7 +383,7 @@
                 const book = allBooks.find(b => b.BookID == item.id);
 
                 if (book) {
-                    const price = parseFloat((book.Price).toLocaleString('vi-VN'));
+                    const price = parseFloat(book.Price); // Price là số từ PHP, không cần convert
                     const itemTotal = price * item.quantity;
                     totalItems += item.quantity;
                     subtotal += itemTotal;
@@ -389,9 +398,9 @@
                         <h6 class="mb-0">${book.Name}</h6>
                         <small class="text-muted">${book.Author}</small>
                     </td>
-                    <td class="text-center">${price.toLocaleString()} ₫</td>
+                    <td class="text-center">${price.toLocaleString('vi-VN')} ₫</td>
                     <td class="text-center">${item.quantity}</td>
-                    <td class="text-end fw-bold">${itemTotal.toLocaleString()} ₫</td>
+                    <td class="text-end fw-bold">${itemTotal.toLocaleString('vi-VN')} ₫</td>
                 </tr>
                 `;
                 }
@@ -416,8 +425,8 @@
             // Re-apply promo discount if already validated
             applyCurrentPromo();
 
-            // Sync cart to session
-            syncCartToSession();
+            // Sync cart to session — lưu Promise để PayPal button có thể await
+            window.cartSyncPromise = syncCartToSession();
         }
 
         // Promo state
@@ -529,26 +538,59 @@
             });
         });
 
-        // Handle place order button click
-        placeOrderButton.addEventListener('click', function () {
-            // Chặn thanh toán nếu mã khuyến mãi không hợp lệ
+        // -----------------------------------------------------------------------
+        // Hàm build FormData từ form checkout (dùng chung cho cả COD và PayPal)
+        // Expose lên window để PayPal SDK (load sau) có thể gọi được
+        // -----------------------------------------------------------------------
+        window.buildCheckoutFormData = function(selectedPaymentMethod) {
+            const formData = new FormData();
+            const addressId = document.getElementById('address_id');
+            const displayAddressSection = document.getElementById('displayAddressSection');
+
+            const isUsingExistingAddress = addressId &&
+                addressId.value !== '0' &&
+                displayAddressSection &&
+                displayAddressSection.style.display !== 'none';
+
+            if (isUsingExistingAddress) {
+                formData.append('address_id', addressId.value);
+            } else {
+                formData.append('new_address', document.getElementById('new_address').value);
+                formData.append('new_ward', document.getElementById('new_ward').value);
+                formData.append('new_district', document.getElementById('new_district').value);
+                formData.append('new_city', document.getElementById('new_city').value);
+            }
+
+            formData.append('payment_method_id', selectedPaymentMethod.value);
+
+            if (window.currentPromo) {
+                formData.append('promo_code', window.currentPromo.name);
+            }
+
+            return formData;
+        };
+
+        // -----------------------------------------------------------------------
+        // Validate form trước khi đặt hàng (dùng chung cho cả COD và PayPal)
+        // Trả về true nếu hợp lệ — expose lên window
+        // -----------------------------------------------------------------------
+        window.validateCheckoutForm = function() {
+            // Chặn nếu mã promo không hợp lệ
             if (window.promoState === 'invalid') {
                 errorAlert.classList.remove('d-none');
                 errorAlertMessage.textContent = 'Mã khuyến mãi không hợp lệ. Vui lòng xóa mã hoặc nhập mã đúng trước khi đặt hàng.';
                 document.getElementById('promoCodeInput').scrollIntoView({ behavior: 'smooth', block: 'center' });
                 document.getElementById('promoCodeInput').focus();
-                return;
+                return false;
             }
-            // Get required fields based on which address section is visible
-            let requiredFields;
+
             const isUsingNewAddress = document.getElementById('displayAddressSection') ?
                 document.getElementById('displayAddressSection').style.display === 'none' : true;
 
+            let requiredFields;
             if (isUsingNewAddress) {
-                // Using new address - validate new address fields
                 requiredFields = document.querySelectorAll('#newAddressSection [required]');
             } else {
-                // Using existing address - only validate fields not in address section
                 requiredFields = document.querySelectorAll('#checkoutForm [required]:not([id^="new_"])');
             }
 
@@ -559,9 +601,7 @@
                 if (!field.value.trim()) {
                     field.classList.add('is-invalid');
                     isValid = false;
-                    if (!firstInvalidField) {
-                        firstInvalidField = field;
-                    }
+                    if (!firstInvalidField) firstInvalidField = field;
                 } else {
                     field.classList.remove('is-invalid');
                 }
@@ -570,137 +610,117 @@
             if (!isValid) {
                 errorAlert.classList.remove('d-none');
                 errorAlertMessage.textContent = 'Vui lòng điền đầy đủ thông tin trước khi tiếp tục.';
-
-                // Scroll to first invalid field
                 if (firstInvalidField) {
                     firstInvalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     firstInvalidField.focus();
                 }
-
-                return;
+                return false;
             }
 
-            // Get selected payment method
             const selectedPaymentMethod = document.querySelector('input[name="paymentMethod"]:checked');
             if (!selectedPaymentMethod) {
                 errorAlert.classList.remove('d-none');
                 errorAlertMessage.textContent = 'Vui lòng chọn phương thức thanh toán.';
-                return;
+                return false;
             }
 
-            // Prepare order data
-            const formData = new FormData();
+            return true;
+        };
 
-            // Add address information
-            const addressId = document.getElementById('address_id');
-            const displayAddressSection = document.getElementById('displayAddressSection');
-
-            // Check if we're using existing address or new address
-            const isUsingExistingAddress = addressId &&
-                addressId.value !== '0' &&
-                displayAddressSection &&
-                displayAddressSection.style.display !== 'none';
-
-            if (isUsingExistingAddress) {
-                // Using existing address
-                formData.append('address_id', addressId.value);
-            } else {
-                // Using new address
-                formData.append('new_address', document.getElementById('new_address').value);
-                formData.append('new_ward', document.getElementById('new_ward').value);
-                formData.append('new_district', document.getElementById('new_district').value);
-                formData.append('new_city', document.getElementById('new_city').value);
-            }
-
-            // Add payment method
-            formData.append('payment_method_id', selectedPaymentMethod.value);
-
-            // Add promo code if applied
-            if (window.currentPromo) {
-                formData.append('promo_code', window.currentPromo.name);
-            }
-            // Show loading state
-            /* Swal.fire({
-                title: 'Đang xử lý',
-                text: 'Đơn hàng của bạn đang được xử lý...',
-                icon: 'info',
-                showConfirmButton: false,
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading();
+        // -----------------------------------------------------------------------
+        // Xử lý sau khi đặt hàng thành công — expose lên window
+        // -----------------------------------------------------------------------
+        window.handleOrderSuccess = function(orderId) {
+            Swal.fire({
+                title: 'Đặt hàng thành công!',
+                text: 'Đơn hàng đã được đặt thành công. Cảm ơn bạn đã mua hàng!',
+                icon: 'success',
+                confirmButtonColor: '#e74c3c',
+                confirmButtonText: 'Xem đơn hàng'
+            }).then(() => {
+                localStorage.removeItem('cart');
+                if (typeof window.updateCartInterface === 'function') {
+                    window.updateCartInterface();
                 }
+                window.location.href = `/my-account/order-history/order-detail?id=${orderId}`;
             });
- */
-            // Submit order to server
+        };
+
+        // -----------------------------------------------------------------------
+        // Nút "Đặt hàng" thông thường (COD / các PTTT không phải PayPal)
+        // -----------------------------------------------------------------------
+        placeOrderButton.addEventListener('click', function () {
+            if (!window.validateCheckoutForm()) return;
+
+            const selectedPaymentMethod = document.querySelector('input[name="paymentMethod"]:checked');
+            const formData = window.buildCheckoutFormData(selectedPaymentMethod);
+
             fetch('/process_checkout', {
                 method: 'POST',
                 body: formData
             })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.success) {
-                        // Show success message
-                        Swal.fire({
-                            title: 'Đặt hàng thành công!',
-                            text: `Đơn hàng đã được đặt thành công. Cảm ơn bạn đã mua hàng!`,
-                            icon: 'success',
-                            confirmButtonColor: '#e74c3c',
-                            confirmButtonText: 'Xem đơn hàng'
-                        }).then((result) => {
-                            // Clear cart
-                            localStorage.removeItem('cart');
-
-                            // Update global cart interface if available
-                            if (typeof window.updateCartInterface === 'function') {
-                                window.updateCartInterface();
-                            }
-
-                            // Redirect to order detail page
-                            window.location.href = `/my-account/order-history/order-detail?id=${data.orderId}`;
-                        });
-                    } else {
-                        Swal.fire({
-                            title: 'Đặt hàng thất bại',
-                            text: data.message || 'Có lỗi xảy ra khi đặt hàng. Vui lòng thử lại sau.',
-                            icon: 'error',
-                            confirmButtonColor: '#e74c3c',
-                            confirmButtonText: 'Đóng'
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
+            .then(response => {
+                if (!response.ok) throw new Error('Network error');
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    window.handleOrderSuccess(data.orderId);
+                } else {
                     Swal.fire({
-                        title: 'Lỗi',
-                        text: 'Có lỗi xảy ra khi kết nối đến máy chủ. Vui lòng thử lại sau.',
+                        title: 'Đặt hàng thất bại',
+                        text: data.message || 'Có lỗi xảy ra khi đặt hàng. Vui lòng thử lại sau.',
                         icon: 'error',
                         confirmButtonColor: '#e74c3c',
                         confirmButtonText: 'Đóng'
                     });
+                }
+            })
+            .catch(error => {
+                console.error('Checkout error:', error);
+                Swal.fire({
+                    title: 'Lỗi kết nối',
+                    text: 'Có lỗi xảy ra khi kết nối đến máy chủ. Vui lòng thử lại sau.',
+                    icon: 'error',
+                    confirmButtonColor: '#e74c3c',
+                    confirmButtonText: 'Đóng'
                 });
+            });
         });
 
-        // Form input event listeners to clear validation errors
+        // -----------------------------------------------------------------------
+        // Ẩn/hiện nút tùy theo phương thức thanh toán được chọn
+        // -----------------------------------------------------------------------
+        function togglePaymentButtons() {
+            const selected = document.querySelector('input[name="paymentMethod"]:checked');
+            const isPayPal = selected && selected.dataset.type === 'paypal';
+
+            placeOrderButton.classList.toggle('d-none', isPayPal);
+            document.getElementById('paypal-button-container').classList.toggle('d-none', !isPayPal);
+        }
+
+        document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
+            radio.addEventListener('change', togglePaymentButtons);
+        });
+
+        // Khởi tạo lần đầu
+        togglePaymentButtons();
+
+        // -----------------------------------------------------------------------
+        // Form input — clear validation errors
+        // -----------------------------------------------------------------------
         checkoutForm.querySelectorAll('input, select, textarea').forEach(element => {
             element.addEventListener('input', function () {
-                if (this.value.trim()) {
-                    this.classList.remove('is-invalid');
-                }
-
-                // Hide error alert if all required fields are filled
-                const invalidFields = checkoutForm.querySelectorAll('.is-invalid');
-                if (invalidFields.length === 0) {
+                if (this.value.trim()) this.classList.remove('is-invalid');
+                if (checkoutForm.querySelectorAll('.is-invalid').length === 0) {
                     errorAlert.classList.add('d-none');
                 }
             });
         });
 
-        // Handle new address button
+        // -----------------------------------------------------------------------
+        // Xử lý địa chỉ mới / địa chỉ có sẵn
+        // -----------------------------------------------------------------------
         const newAddressBtn = document.getElementById('newAddressBtn');
         const cancelNewAddressBtn = document.getElementById('cancelNewAddressBtn');
         const displayAddressSection = document.getElementById('displayAddressSection');
@@ -711,13 +731,11 @@
                 displayAddressSection.style.display = 'none';
                 newAddressSection.style.display = 'block';
                 newAddressBtn.style.display = 'none';
-
-                // Enable and mark the address fields as required
                 document.getElementById('new_address').required = true;
                 document.getElementById('new_city').required = true;
                 document.getElementById('new_district').required = true;
                 document.getElementById('new_ward').required = true;
-                document.getElementById('address_id').value = '0'; // Reset address ID to force new address
+                document.getElementById('address_id').value = '0';
             });
         }
 
@@ -726,22 +744,19 @@
                 displayAddressSection.style.display = 'block';
                 newAddressSection.style.display = 'none';
                 newAddressBtn.style.display = 'block';
-
-                // Disable and remove required from new address fields
                 document.getElementById('new_address').required = false;
                 document.getElementById('new_city').required = false;
                 document.getElementById('new_district').required = false;
                 document.getElementById('new_ward').required = false;
-
-                // Reset address ID to original value
                 document.getElementById('address_id').value = '<?= htmlspecialchars($user['AddressID'] ?? '0') ?>';
             });
         }
 
-        // Initialize checkout UI and set required fields based on address mode
+        // -----------------------------------------------------------------------
+        // Khởi tạo UI
+        // -----------------------------------------------------------------------
         updateCheckoutUI();
 
-        // If user has an address, disable required attributes on the new address fields initially
         if (document.getElementById('displayAddressSection')) {
             document.getElementById('new_address').required = false;
             document.getElementById('new_city').required = false;
@@ -751,19 +766,166 @@
     });
 </script>
 
+<?php
+// Lấy PayPal Client ID để inject vào JS
+require_once ROOT_PATH . '/config/paypal.php';
+?>
+<!-- PayPal JS SDK — chỉ load khi có Client ID hợp lệ -->
+<script src="https://www.paypal.com/sdk/js?client-id=<?= htmlspecialchars(PAYPAL_CLIENT_ID) ?>&currency=<?= PAYPAL_CURRENCY === 'VND' ? 'USD' : htmlspecialchars(PAYPAL_CURRENCY) ?>&intent=capture" defer></script>
+
+<script>
+    // Khởi tạo PayPal Buttons sau khi PayPal SDK đã load
+    window.addEventListener('load', function () {
+        if (typeof paypal === 'undefined') {
+            console.warn('PayPal SDK chưa load. Kiểm tra Client ID trong config/paypal.php');
+            // Hiển thị thông báo lỗi trong container PayPal thay vì để trống
+            const container = document.getElementById('paypal-button-container');
+            if (container) {
+                container.innerHTML = `
+                    <div class="alert alert-warning d-flex align-items-center" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <span>PayPal chưa được cấu hình. Vui lòng chọn phương thức thanh toán khác hoặc liên hệ hỗ trợ.</span>
+                    </div>`;
+            }
+            return;
+        }
+
+        paypal.Buttons({
+            style: {
+                layout: 'vertical',
+                color:  'gold',
+                shape:  'rect',
+                label:  'pay',
+                height: 45
+            },
+
+            // ---------------------------------------------------------------
+            // Bước 1: Tạo PayPal Order (gọi lên server)
+            // ---------------------------------------------------------------
+            createOrder: function (data, actions) {
+                // Validate form trước khi mở popup PayPal
+                if (!window.validateCheckoutForm()) {
+                    return Promise.reject(new Error('__silent__'));
+                }
+
+                const selected = document.querySelector('input[name="paymentMethod"]:checked');
+                const formData = window.buildCheckoutFormData(selected);
+
+                // Đảm bảo cart đã được sync lên session trước khi gọi server
+                const syncPromise = window.cartSyncPromise instanceof Promise
+                    ? window.cartSyncPromise
+                    : syncCartToSession();
+
+                return syncPromise.then(() => {
+                    return fetch('/paypal/create-order', {
+                        method: 'POST',
+                        body: formData
+                    });
+                })
+                .then(res => {
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    return res.json();
+                })
+                .then(data => {
+                    console.log('[PayPal] create-order response:', data);
+                    if (!data.success) {
+                        Swal.fire({
+                            title: 'Không thể tạo giao dịch',
+                            text: data.message || 'Không thể tạo giao dịch PayPal.',
+                            icon: 'error',
+                            confirmButtonColor: '#e74c3c'
+                        });
+                        return Promise.reject(new Error('__silent__'));
+                    }
+                    return data.id; // PayPal Order ID
+                });
+            },
+
+            // ---------------------------------------------------------------
+            // Bước 2: User đã approve trên popup PayPal → capture
+            // ---------------------------------------------------------------
+            onApprove: function (data, actions) {
+                Swal.fire({
+                    title: 'Đang xử lý thanh toán...',
+                    text: 'Vui lòng chờ trong giây lát.',
+                    icon: 'info',
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    didOpen: () => Swal.showLoading()
+                });
+
+                return fetch('/paypal/capture-order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ paypalOrderId: data.orderID })
+                })
+                .then(res => res.json())
+                .then(result => {
+                    Swal.close();
+                    if (result.success) {
+                        window.handleOrderSuccess(result.orderId);
+                    } else {
+                        Swal.fire({
+                            title: 'Thanh toán thất bại',
+                            text: result.message || 'Có lỗi xảy ra. Vui lòng thử lại.',
+                            icon: 'error',
+                            confirmButtonColor: '#e74c3c',
+                            confirmButtonText: 'Đóng'
+                        });
+                    }
+                })
+                .catch(err => {
+                    Swal.close();
+                    console.error('Capture error:', err);
+                    Swal.fire({
+                        title: 'Lỗi kết nối',
+                        text: 'Không thể hoàn tất thanh toán. Vui lòng thử lại.',
+                        icon: 'error',
+                        confirmButtonColor: '#e74c3c'
+                    });
+                });
+            },
+
+            // ---------------------------------------------------------------
+            // User đóng popup PayPal mà không thanh toán
+            // ---------------------------------------------------------------
+            onCancel: function (data) {
+                Swal.fire({
+                    title: 'Đã hủy thanh toán',
+                    text: 'Bạn đã hủy quá trình thanh toán PayPal.',
+                    icon: 'warning',
+                    confirmButtonColor: '#e74c3c',
+                    confirmButtonText: 'Quay lại'
+                });
+            },
+
+            // ---------------------------------------------------------------
+            // Lỗi từ PayPal SDK (chỉ hiện khi lỗi thật, không phải do mình reject)
+            // ---------------------------------------------------------------
+            onError: function (err) {
+                // Bỏ qua lỗi silent (do mình chủ động reject sau khi đã hiện Swal)
+                if (err && err.message === '__silent__') return;
+
+                console.error('[PayPal] onError:', err);
+                Swal.fire({
+                    title: 'Lỗi PayPal',
+                    html: `<p>Có lỗi xảy ra với PayPal.</p>
+                           <p class="text-muted small mt-2">Chi tiết: <code>${String(err)}</code></p>
+                           <p class="mt-2">Vui lòng kiểm tra lại thông tin thanh toán hoặc thử phương thức khác.</p>`,
+                    icon: 'error',
+                    confirmButtonColor: '#e74c3c'
+                });
+            }
+
+        }).render('#paypal-button-container');
+    });
+</script>
+
 <style>
-    /* Checkout page specific styles */
     .payment-method-item {
         padding: 0.75rem;
         border-radius: 0.25rem;
         transition: all 0.2s;
-    }
-
-    /* Nút đặt hàng khi bị vô hiệu hóa do mã promo không hợp lệ */
-    #placeOrderButton:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-        pointer-events: auto; /* giữ cursor hiển thị */
     }
 
     .payment-method-item:hover {
@@ -778,6 +940,18 @@
     .payment-method-item .form-check-label {
         cursor: pointer;
         font-weight: 500;
+    }
+
+    /* Nút đặt hàng khi bị vô hiệu hóa */
+    #placeOrderButton:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        pointer-events: auto;
+    }
+
+    /* PayPal container */
+    #paypal-button-container {
+        min-height: 45px;
     }
 
     /* Form validation */
