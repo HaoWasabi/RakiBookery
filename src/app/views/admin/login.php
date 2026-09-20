@@ -18,7 +18,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 
     <!-- Favicon -->
-    <link rel="icon" href="/img/logo.jpg" type="image/jpeg">
+    <link rel="icon" href="/img/logo.JPG" type="image/jpeg">
 
     <!-- SweetAlert2 CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
@@ -32,7 +32,7 @@
         <div class="card">
             <div class="card-header">
                 <div class="logo-container">
-                    <img src="/img/logo.jpg" alt="RakiBookery Logo">
+                    <img src="/img/logo.JPG" alt="RakiBookery Logo">
                 </div>
                 <h4 class="mb-0">RakiBookery Admin</h4>
             </div>

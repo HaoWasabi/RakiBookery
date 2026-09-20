@@ -3,7 +3,7 @@
 <title><?= isset($page_title) ? $page_title : 'RakiBookery' ?></title>
 
 <!-- Favicon -->
-<link rel="icon" href="/img/logo.jpg" type="image/jpeg">
+<link rel="icon" href="/img/logo.JPG" type="image/jpeg">
 <!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
