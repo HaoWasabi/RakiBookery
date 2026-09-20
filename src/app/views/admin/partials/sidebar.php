@@ -4,7 +4,7 @@
         <div class="sidebar-header d-flex justify-content-between align-items-center mb-4">
             <div class="d-flex align-items-center logo-container">
                 <div class="logo-wrapper">
-                    <img src="/img/logo.JPG" alt="RakiBookery Logo" class="img-fluid rounded-circle shadow-sm logo-img">
+                    <img src="/img/logo.jpg" alt="RakiBookery Logo" class="img-fluid rounded-circle shadow-sm logo-img">
                 </div>
                 <h5 class="ms-2 mb-0 text-white fw-bold logo-text">RakiBookery</h5>
             </div>
