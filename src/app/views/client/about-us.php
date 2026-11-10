@@ -1,5 +1,5 @@
 <!-- "Giới thiệu - RakiBookery"; -->
-<?php $foundedYear = 2024; ?>
+<?php $foundedYear = 2026; ?>
 <!-- About Us Banner -->
 <section class="about-banner py-2 bg-light">
     <div class="container">
@@ -158,7 +158,7 @@
                         <img src="../../img/about/team-1.jpg" alt="Nguyen Van A" class="img-fluid rounded-circle shadow"
                             style="width: 150px; height: 150px; object-fit: cover;">
                     </div>
-                    <h4 class="mb-1">HTPTHANH</h4>
+                    <h4 class="mb-1">Kiệt Raki</h4>
                     <p class="text-muted mb-2">Nhà sáng lập & CEO</p>
                     <div class="social-icons">
                         <a href="#" class="social-icon"><i class="fab fa-facebook-f"></i></a>
@@ -173,7 +173,7 @@
                         <img src="../../img/about/team-2.jpg" alt="Tran Thi B" class="img-fluid rounded-circle shadow"
                             style="width: 150px; height: 150px; object-fit: cover;">
                     </div>
-                    <h4 class="mb-1">TGHAO</h4>
+                    <h4 class="mb-1">Hào Trương</h4>
                     <p class="text-muted mb-2">Giám đốc Marketing</p>
                     <div class="social-icons">
                         <a href="#" class="social-icon"><i class="fab fa-facebook-f"></i></a>
@@ -188,7 +188,7 @@
                         <img src="../../img/about/team-3.jpg" alt="Le Van C" class="img-fluid rounded-circle shadow"
                             style="width: 150px; height: 150px; object-fit: cover;">
                     </div>
-                    <h4 class="mb-1">LHMIH</h4>
+                    <h4 class="mb-1">Nhật Nguyễn</h4>
                     <p class="text-muted mb-2">Giám đốc Sản phẩm</p>
                     <div class="social-icons">
                         <a href="#" class="social-icon"><i class="fab fa-facebook-f"></i></a>
@@ -203,7 +203,7 @@
                         <img src="../../img/about/team-4.jpg" alt="Pham Thi D" class="img-fluid rounded-circle shadow"
                             style="width: 150px; height: 150px; object-fit: cover;">
                     </div>
-                    <h4 class="mb-1">LHMN</h4>
+                    <h4 class="mb-1">An Nguyễn</h4>
                     <p class="text-muted mb-2">Trưởng phòng Kinh doanh</p>
                     <div class="social-icons">
                         <a href="#" class="social-icon"><i class="fab fa-facebook-f"></i></a>
@@ -218,7 +218,7 @@
                         <img src="../../img/about/team-5.jpg" alt="Hoang Van E" class="img-fluid rounded-circle shadow"
                             style="width: 150px; height: 150px; object-fit: cover;">
                     </div>
-                    <h4 class="mb-1">Nael Tuhline</h4>
+                    <h4 class="mb-1">Bảo Nguyễn</h4>
                     <p class="text-muted mb-2">Trưởng phòng CSKH</p>
                     <div class="social-icons">
                         <a href="#" class="social-icon"><i class="fab fa-facebook-f"></i></a>

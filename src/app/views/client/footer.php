@@ -31,7 +31,7 @@
         </div>
         <hr>
         <div class="text-center">
-            <p>© 2025 RakiBookery. All rights reserved.</p>
+            <p>© 2026 RakiBookery. All rights reserved.</p>
         </div>
     </div>
 </footer>
