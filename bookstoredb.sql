@@ -6,7 +6,7 @@
 -- --------------------------------------------------------
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET NAMES utf8 */;
+/*!40101 SET NAMES utf8mb4 */;
 /*!50503 SET NAMES utf8mb4 */;
 /*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
 /*!40103 SET TIME_ZONE='+00:00' */;
@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS `book` (
   `Author` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
   `Publisher` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
   `ReleaseDate` date NOT NULL,
-  `Status` tinyint(1) NOT NULL DEFAULT '1',
+  `Status` tinyint NOT NULL DEFAULT '1',
   PRIMARY KEY (`BookID`),
   KEY `CategoryID` (`CategoryID`),
   CONSTRAINT `book_ibfk_1` FOREIGN KEY (`CategoryID`) REFERENCES `category` (`CategoryID`)
@@ -290,7 +290,7 @@ CREATE TABLE IF NOT EXISTS `user` (
   `Password` varchar(255) NOT NULL,
   `Role` enum('user','admin') NOT NULL DEFAULT 'user',
   `Phone` varchar(20) DEFAULT NULL,
-  `Status` tinyint(1) NOT NULL DEFAULT '1',
+  `Status` tinyint NOT NULL DEFAULT '1',
   `AddressID` int DEFAULT NULL,
   PRIMARY KEY (`UserID`),
   UNIQUE KEY `Email` (`Email`),
@@ -318,3 +318,108 @@ REPLACE INTO `user` (`UserID`, `Name`, `Email`, `Password`, `Role`, `Phone`, `St
 /*!40014 SET FOREIGN_KEY_CHECKS=IFNULL(@OLD_FOREIGN_KEY_CHECKS, 1) */;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40111 SET SQL_NOTES=IFNULL(@OLD_SQL_NOTES, 1) */;
+
+-- Thêm PayPal vào bảng PaymentMethod (bỏ qua nếu đã tồn tại)
+INSERT IGNORE INTO `paymentmethod` (`Name`)
+VALUES ('PayPal');
+
+-- 1. Tạo bảng Promo (nếu chưa tồn tại)
+--    Status: 1 = hiển thị (hoạt động), 0 = ẩn (soft delete)
+--    Promo KHÔNG bao giờ bị hard delete để bảo toàn lịch sử đơn hàng.
+CREATE TABLE IF NOT EXISTS `promo` (
+    `PromoID`     INT NOT NULL AUTO_INCREMENT,
+    `Name`        VARCHAR(100) NOT NULL,
+    `Discounted`  DECIMAL(5,2) NOT NULL COMMENT 'Phần trăm giảm giá (0-100)',
+    `DateCreated` DATE DEFAULT NULL,
+    `Status`      TINYINT NOT NULL DEFAULT 1 COMMENT '1 = hiển thị, 0 = ẩn',
+    PRIMARY KEY (`PromoID`),
+    UNIQUE KEY `uq_promo_name` (`Name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- 2. Thêm cột PromoID chỉ khi nó chưa tồn tại.
+SET @promo_column_exists = (
+    SELECT COUNT(*)
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'order'
+      AND COLUMN_NAME = 'PromoID'
+);
+
+SET @migration_sql = IF(
+    @promo_column_exists = 0,
+    'ALTER TABLE `order` ADD COLUMN `PromoID` INT NULL DEFAULT NULL AFTER `PaymentMethodID`',
+    'SELECT ''Column PromoID already exists; skipped'' AS `MigrationMessage`'
+);
+
+PREPARE migration_stmt FROM @migration_sql;
+EXECUTE migration_stmt;
+DEALLOCATE PREPARE migration_stmt;
+
+-- 3. Thêm cột OriginalAmount chỉ khi nó chưa tồn tại.
+SET @original_amount_column_exists = (
+    SELECT COUNT(*)
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'order'
+      AND COLUMN_NAME = 'OriginalAmount'
+);
+
+SET @migration_sql = IF(
+    @original_amount_column_exists = 0,
+    'ALTER TABLE `order` ADD COLUMN `OriginalAmount` DECIMAL(15,2) NULL DEFAULT NULL COMMENT ''Tổng tiền trước khi áp dụng khuyến mãi'' AFTER `TotalAmount`',
+    'SELECT ''Column OriginalAmount already exists; skipped'' AS `MigrationMessage`'
+);
+
+PREPARE migration_stmt FROM @migration_sql;
+EXECUTE migration_stmt;
+DEALLOCATE PREPARE migration_stmt;
+
+-- 4. Điền giá trị OriginalAmount cho các đơn hàng hiện có khi giá trị này là NULL.
+UPDATE `order`
+SET `OriginalAmount` = `TotalAmount`
+WHERE `OriginalAmount` IS NULL AND `OrderID` > 0;
+
+-- 5. Chỉ thêm khóa ngoại nếu mối quan hệ PromoID -> promo.PromoID không tồn tại.
+-- Xóa các tham chiếu độc lập trước để có thể tạo FK một cách an toàn.
+UPDATE `order` AS o
+LEFT JOIN `promo` AS p ON p.`PromoID` = o.`PromoID`
+SET o.`PromoID` = NULL
+WHERE o.`PromoID` IS NOT NULL
+  AND p.`PromoID` IS NULL
+  AND `OrderID` > 0;
+
+SET @promo_fk_exists = (
+    SELECT COUNT(*)
+    FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'order'
+      AND COLUMN_NAME = 'PromoID'
+      AND REFERENCED_TABLE_NAME = 'promo'
+      AND REFERENCED_COLUMN_NAME = 'PromoID'
+);
+
+SET @migration_sql = IF(
+    @promo_fk_exists = 0,
+    'ALTER TABLE `order` ADD CONSTRAINT `order_ibfk_4` FOREIGN KEY (`PromoID`) REFERENCES `promo` (`PromoID`) ON DELETE SET NULL ON UPDATE CASCADE',
+    'SELECT ''PromoID foreign key already exists; skipped'' AS `MigrationMessage`'
+);
+
+PREPARE migration_stmt FROM @migration_sql;
+EXECUTE migration_stmt;
+DEALLOCATE PREPARE migration_stmt;
+
+-- 6. Chèn các chương trình khuyến mãi mẫu chỉ khi tên của chúng chưa tồn tại.
+INSERT INTO `promo` (`Name`, `Discounted`, `DateCreated`, `Status`)
+SELECT seed.`Name`, seed.`Discounted`, seed.`DateCreated`, seed.`Status`
+FROM (
+    SELECT 'SALE10' AS `Name`, 10.00 AS `Discounted`, CURDATE() AS `DateCreated`, 1 AS `Status`
+    UNION ALL
+    SELECT 'SALE20', 20.00, CURDATE(), 1
+    UNION ALL
+    SELECT 'SUMMER30', 30.00, CURDATE(), 1
+) AS seed
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM `promo` AS p
+    WHERE p.`Name` = seed.`Name`
+);

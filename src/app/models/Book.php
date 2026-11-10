@@ -19,7 +19,7 @@ class Book
     public function createBook($name, $description, $price, $stock, $imageURL, $categoryID, $length, $weight, $dimensions, $language, $format, $author, $publisher, $releaseDate, $status)
     {
         try {
-            $stmt = $this->conn->prepare("INSERT INTO Book (Name, Description, Price, Stock, ImageURL, CategoryID, Length, Weight, Dimensions, Language, Format, Author, Publisher, ReleaseDate, Status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt = $this->conn->prepare("INSERT INTO book (Name, Description, Price, Stock, ImageURL, CategoryID, Length, Weight, Dimensions, Language, Format, Author, Publisher, ReleaseDate, Status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             return $stmt->execute([$name, $description, $price, $stock, $imageURL, $categoryID, $length, $weight, $dimensions, $language, $format, $author, $publisher, $releaseDate, $status]);
         } catch (PDOException $e) {
             error_log("Lỗi thêm sách: " . $e->getMessage());
@@ -31,7 +31,7 @@ class Book
     /*  public function updateBook($bookID, $name, $description, $price, $stock, $imageURL, $categoryID, $length, $weight, $dimensions, $language, $format, $author, $publisher, $releaseDate, $status)
      {
          try {
-             $stmt = $this->conn->prepare("UPDATE Book SET Name = ?, Description = ?, Price = ?, Stock = ?, ImageURL = ?, CategoryID = ?, Length = ?, Weight = ?, Dimensions = ?, Language = ?, Format = ?, Author = ?, Publisher = ?, ReleaseDate = ?, Status = ? WHERE BookID = ? AND Status <> 0");
+             $stmt = $this->conn->prepare("UPDATE book SET Name = ?, Description = ?, Price = ?, Stock = ?, ImageURL = ?, CategoryID = ?, Length = ?, Weight = ?, Dimensions = ?, Language = ?, Format = ?, Author = ?, Publisher = ?, ReleaseDate = ?, Status = ? WHERE BookID = ? AND Status <> 0");
              return $stmt->execute([$name, $description, $price, $stock, $imageURL, $categoryID, $length, $weight, $dimensions, $language, $format, $author, $publisher, $releaseDate, $status, $bookID]);
          } catch (PDOException $e) {
              error_log("Lỗi cập nhật sách: " . $e->getMessage());
@@ -43,7 +43,7 @@ class Book
     public function deleteBook($bookID)
     {
         try {
-            $stmt = $this->conn->prepare("DELETE FROM Book WHERE BookID = ?");
+            $stmt = $this->conn->prepare("DELETE FROM book WHERE BookID = ?");
             return $stmt->execute([$bookID]);
         } catch (PDOException $e) {
             error_log("Lỗi xóa sách: " . $e->getMessage());
@@ -55,7 +55,7 @@ class Book
     public function undeleteBook($bookID)
     {
         try {
-            $stmt = $this->conn->prepare("UPDATE Book SET Status = 1 WHERE BookID = ? AND Status = 0");
+            $stmt = $this->conn->prepare("UPDATE book SET Status = 1 WHERE BookID = ? AND Status = 0");
             return $stmt->execute([$bookID]);
         } catch (PDOException $e) {
             error_log("Lỗi hủy xóa sách: " . $e->getMessage());
@@ -67,7 +67,7 @@ class Book
     public function getAllBooks()
     {
         try {
-            $stmt = $this->conn->prepare("SELECT b.*, c.Name AS Category FROM Book b JOIN Category c ON b.CategoryID = c.CategoryID ORDER BY b.BookID DESC");
+            $stmt = $this->conn->prepare("SELECT b.*, c.Name AS Category FROM book b JOIN category c ON b.CategoryID = c.CategoryID ORDER BY b.BookID DESC");
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
@@ -79,7 +79,7 @@ class Book
     public function getAllAvailableBooks()
     {
         try {
-            $stmt = $this->conn->prepare("SELECT b.*, c.Name AS Category FROM Book b JOIN Category c ON b.CategoryID = c.CategoryID WHERE b.Status <> 0 ORDER BY b.BookID DESC");
+            $stmt = $this->conn->prepare("SELECT b.*, c.Name AS Category FROM book b JOIN category c ON b.CategoryID = c.CategoryID WHERE b.Status <> 0 ORDER BY b.BookID DESC");
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
@@ -91,7 +91,7 @@ class Book
     public function getBookById($bookID)
     {
         try {
-            $stmt = $this->conn->prepare("SELECT b.*, c.Name AS Category FROM Book b JOIN Category c ON b.CategoryID = c.CategoryID WHERE b.BookID = ?");
+            $stmt = $this->conn->prepare("SELECT b.*, c.Name AS Category FROM book b JOIN category c ON b.CategoryID = c.CategoryID WHERE b.BookID = ?");
             $stmt->execute([$bookID]);
             return $stmt->fetch(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
@@ -103,7 +103,7 @@ class Book
     public function getAvailableBookById($bookID)
     {
         try {
-            $stmt = $this->conn->prepare("SELECT b.*, c.Name AS Category FROM Book b JOIN Category c ON b.CategoryID = c.CategoryID WHERE b.BookID = ? AND b.Status = 1");
+            $stmt = $this->conn->prepare("SELECT b.*, c.Name AS Category FROM book b JOIN category c ON b.CategoryID = c.CategoryID WHERE b.BookID = ? AND b.Status = 1");
             $stmt->execute([$bookID]);
             return $stmt->fetch(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
@@ -122,10 +122,10 @@ class Book
                 c.Name AS Category,
                 SUM(od.Quantity) AS TotalSold,
                 SUM(od.Quantity * od.Price) AS TotalRevenue
-            FROM OrderDetail od
-            INNER JOIN `Order` o ON od.OrderID = o.OrderID
-            INNER JOIN Book b ON od.ProductID = b.BookID
-            INNER JOIN Category c ON b.CategoryID = c.CategoryID
+            FROM orderdetail od
+            INNER JOIN `order` o ON od.OrderID = o.OrderID
+            INNER JOIN book b ON od.ProductID = b.BookID
+            INNER JOIN category c ON b.CategoryID = c.CategoryID
             WHERE o.Status = 'delivered_success'
             GROUP BY b.BookID, c.Name
             ORDER BY TotalSold DESC
@@ -145,7 +145,7 @@ class Book
     public function getTotalBooks()
     {
         try {
-            $stmt = $this->conn->prepare("SELECT COUNT(*) FROM Book WHERE Status <> 0");
+            $stmt = $this->conn->prepare("SELECT COUNT(*) FROM book WHERE Status <> 0");
             $stmt->execute();
             return (int) $stmt->fetchColumn();
         } catch (PDOException $e) {
@@ -160,8 +160,8 @@ class Book
         try {
             $query = "
                 SELECT b.*, c.Name AS Category 
-                FROM Book b 
-                JOIN Category c ON b.CategoryID = c.CategoryID 
+                FROM book b 
+                JOIN category c ON b.CategoryID = c.CategoryID 
                 WHERE 1=1
             ";
 
@@ -212,8 +212,8 @@ class Book
         try {
             $query = "
                 SELECT COUNT(*) 
-                FROM Book b 
-                JOIN Category c ON b.CategoryID = c.CategoryID 
+                FROM book b 
+                JOIN category c ON b.CategoryID = c.CategoryID 
                 WHERE 1=1
             ";
 
@@ -254,8 +254,8 @@ class Book
         try {
             $stmt = $this->conn->prepare("
                 SELECT COUNT(*) 
-                FROM OrderDetail od 
-                JOIN `Order` o ON od.OrderID = o.OrderID
+                FROM orderdetail od 
+                JOIN `order` o ON od.OrderID = o.OrderID
                 WHERE od.ProductID = ?
             ");
             $stmt->execute([$bookId]);
@@ -270,7 +270,7 @@ class Book
     public function disableBook($bookId)
     {
         try {
-            $stmt = $this->conn->prepare("UPDATE Book SET Status = 0 WHERE BookID = ?");
+            $stmt = $this->conn->prepare("UPDATE book SET Status = 0 WHERE BookID = ?");
             return $stmt->execute([$bookId]);
         } catch (PDOException $e) {
             error_log("Lỗi vô hiệu hóa sách: " . $e->getMessage());
@@ -283,7 +283,7 @@ class Book
     {
         try {
             $query = "
-                INSERT INTO Book 
+                INSERT INTO book 
                 (Name, Description, Price, Stock, ImageURL, CategoryID, Length, Weight, Dimensions, 
                 Language, Format, Author, Publisher, ReleaseDate, Status) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -359,7 +359,7 @@ class Book
                 return true; // Nothing to update
             }
 
-            $query = "UPDATE Book SET " . implode(', ', $fields) . " WHERE BookID = ?";
+            $query = "UPDATE book SET " . implode(', ', $fields) . " WHERE BookID = ?";
             $params[] = $bookId;
 
             $stmt = $this->conn->prepare($query);

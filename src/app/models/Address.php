@@ -47,8 +47,8 @@ class Address
     {
         try {
             $query = "SELECT a.AddressID, a.Address, a.City, a.District, a.Ward 
-                      FROM User u 
-                      JOIN Address a ON u.AddressID = a.AddressID
+                      FROM user u 
+                      JOIN address a ON u.AddressID = a.AddressID
                       WHERE u.UserID = ?";
             $stmt = $this->conn->prepare($query);
             $stmt->execute([$userId]);

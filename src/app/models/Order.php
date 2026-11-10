@@ -25,7 +25,7 @@ class Order
                 $originalAmount = $totalAmount;
             }
             $stmt = $this->conn->prepare("
-            INSERT INTO `Order` (UserID, TotalAmount, OriginalAmount, AddressID, PaymentMethodID, PromoID) 
+            INSERT INTO `order` (UserID, TotalAmount, OriginalAmount, AddressID, PaymentMethodID, PromoID) 
             VALUES (?, ?, ?, ?, ?, ?)
         ");
             $stmt->execute([$userId, $totalAmount, $originalAmount, $addressId, $paymentMethodId, $promoId]);
@@ -41,7 +41,7 @@ class Order
     {
         try {
             // Kiểm tra đơn hàng hiện tại (có điều kiện user nếu có)
-            $query = "SELECT Status FROM `Order` WHERE OrderID = ?";
+            $query = "SELECT Status FROM `order` WHERE OrderID = ?";
             $params = [$orderId];
 
             if ($userId !== null) {
@@ -60,7 +60,7 @@ class Order
                 return false;
 
             // Cập nhật trạng thái đơn hàng
-            $stmt = $this->conn->prepare("UPDATE `Order` SET Status = ? WHERE OrderID = ?" . ($userId !== null ? " AND UserID = ?" : ""));
+            $stmt = $this->conn->prepare("UPDATE `order` SET Status = ? WHERE OrderID = ?" . ($userId !== null ? " AND UserID = ?" : ""));
             $params = [$newStatus, $orderId];
             if ($userId !== null)
                 $params[] = $userId;
@@ -79,9 +79,9 @@ class Order
         try {
             $stmt = $this->conn->prepare("
             SELECT o.*, a.Address, a.City, a.District, a.Ward ,u.Name
-            FROM `Order` o
-            JOIN Address a ON o.AddressID = a.AddressID
-            JOIN User u on u.AddressID=O.AddressId
+            FROM `order` o
+            JOIN address a ON o.AddressID = a.AddressID
+            JOIN user u on u.AddressID=O.AddressId
             ORDER BY o.OrderDate DESC
         ");
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -95,9 +95,9 @@ class Order
         try {
             $stmt = $this->conn->prepare("
             SELECT o.*, a.Address, a.City, a.District, a.Ward ,u.Name,o.Status
-            FROM `Order` o
-            JOIN Address a ON o.AddressID = a.AddressID
-            JOIN User u on u.AddressID=O.AddressId
+            FROM `order` o
+            JOIN address a ON o.AddressID = a.AddressID
+            JOIN user u on u.AddressID=O.AddressId
             Where o.UserID = ?
             ORDER BY o.OrderDate DESC
         ");
@@ -115,9 +115,9 @@ class Order
         try {
             $query = "
             SELECT o.*, a.Address, a.City, a.District, a.Ward ,u.Name
-            FROM `Order` o
-            JOIN Address a ON o.AddressID = a.AddressID
-            JOIN User u on u.AddressID=O.AddressId
+            FROM `order` o
+            JOIN address a ON o.AddressID = a.AddressID
+            JOIN user u on u.AddressID=O.AddressId
             WHERE 1=1
         ";
 
@@ -161,7 +161,7 @@ class Order
                     COUNT(DISTINCT o.OrderID) AS OrderCount,
                     SUM(o.TotalAmount) AS TotalAmount
                 FROM user u
-                JOIN `Order` o ON u.UserID = o.UserID
+                JOIN `order` o ON u.UserID = o.UserID
                 WHERE o.Status = 'delivered_success'
             ";
 
@@ -199,7 +199,7 @@ class Order
         try {
             $query = "
                 SELECT o.OrderID, o.OrderDate, o.TotalAmount, o.Status
-                FROM `Order` o
+                FROM `order` o
                 WHERE o.UserID = ? AND o.Status = 'delivered_success'
             ";
 
@@ -235,7 +235,7 @@ class Order
                     COUNT(DISTINCT o.OrderID) AS OrderCount,
                     SUM(o.TotalAmount) AS TotalAmount
                 FROM user u
-                JOIN `Order` o ON u.UserID = o.UserID
+                JOIN `order` o ON u.UserID = o.UserID
                 WHERE o.Status = 'delivered_success'
                 ";
         
@@ -264,7 +264,7 @@ class Order
                 foreach ($topCustomers as &$customer) {
                     $orderQuery = "
                     SELECT o.OrderID, o.OrderDate, o.TotalAmount, o.Status
-                    FROM `Order` o
+                    FROM `order` o
                     WHERE o.UserID = ? AND o.Status = 'delivered_success'
                 ";
         
@@ -306,11 +306,11 @@ class Order
                         a.Address, a.City, a.District, a.Ward,
                         pm.Name AS PaymentMethod,
                         p.PromoID, p.Name AS PromoName, p.Discounted AS PromoDiscounted
-                    FROM `Order` o
-                    JOIN User u ON o.UserID = u.UserID
-                    JOIN Address a ON o.AddressID = a.AddressID
-                    JOIN PaymentMethod pm ON o.PaymentMethodID = pm.PaymentMethodID
-                    LEFT JOIN Promo p ON o.PromoID = p.PromoID
+                    FROM `order` o
+                    JOIN user u ON o.UserID = u.UserID
+                    JOIN address a ON o.AddressID = a.AddressID
+                    JOIN paymentmethod pm ON o.PaymentMethodID = pm.PaymentMethodID
+                    LEFT JOIN promo p ON o.PromoID = p.PromoID
                     WHERE o.OrderID = ?
                     ";
 
@@ -335,9 +335,9 @@ class Order
                 SELECT 
                     od.ProductID, b.Name AS ProductName, b.Author, b.ImageURL,
                     od.Quantity, od.Price , c.Name AS Category
-                FROM OrderDetail od
-                JOIN Book b ON od.ProductID = b.BookID
-                JOIN Category c ON b.CategoryID = c.CategoryID
+                FROM orderdetail od
+                JOIN book b ON od.ProductID = b.BookID
+                JOIN category c ON b.CategoryID = c.CategoryID
                 WHERE od.OrderID = ?
             ");
             $stmt->execute([$orderId]);
@@ -365,9 +365,9 @@ class Order
 
         try {
             $query = "SELECT o.*, a.Address, a.City, a.District, a.Ward, u.Name
-                      FROM `Order` o
-                      JOIN Address a ON o.AddressID = a.AddressID
-                      JOIN User u ON u.UserID = o.UserID
+                      FROM `order` o
+                      JOIN address a ON o.AddressID = a.AddressID
+                      JOIN user u ON u.UserID = o.UserID
                       WHERE o.UserID = ?";
 
             $params = [$userId];
@@ -411,7 +411,7 @@ class Order
     public function getTotalOrders()
     {
         try {
-            $stmt = $this->conn->prepare("SELECT COUNT(*) FROM `Order`");
+            $stmt = $this->conn->prepare("SELECT COUNT(*) FROM `order`");
             $stmt->execute();
             return (int) $stmt->fetchColumn();
         } catch (PDOException $e) {
@@ -424,7 +424,7 @@ class Order
     public function getTotalRevenue()
     {
         try {
-            $stmt = $this->conn->prepare("SELECT SUM(TotalAmount) FROM `Order` WHERE Status = 'delivered_success'");
+            $stmt = $this->conn->prepare("SELECT SUM(TotalAmount) FROM `order` WHERE Status = 'delivered_success'");
             $stmt->execute();
             return (float) $stmt->fetchColumn() ?: 0;
         } catch (PDOException $e) {
@@ -444,11 +444,11 @@ class Order
                 COUNT(DISTINCT o.OrderID) AS OrderCount,
                 SUM(od.Quantity) AS ItemCount,
                 SUM(od.Quantity * IFNULL(od.Price, 0)) AS TotalAmount
-            FROM OrderDetail od
-            JOIN `Order` o ON od.OrderID = o.OrderID 
+            FROM orderdetail od
+            JOIN `order` o ON od.OrderID = o.OrderID 
                 AND o.Status = 'delivered_success'
-            JOIN Book b ON od.ProductID = b.BookID
-            JOIN Category c ON b.CategoryID = c.CategoryID
+            JOIN book b ON od.ProductID = b.BookID
+            JOIN category c ON b.CategoryID = c.CategoryID
             GROUP BY c.CategoryID
             ORDER BY TotalAmount DESC
             LIMIT :limit
@@ -468,6 +468,23 @@ class Order
     public function getOrdersByCategoryByPeriod($timePeriod = 'all')
     {
         try {
+            $dateCondition = '';
+            switch ($timePeriod) {
+                case '1month':
+                    $dateCondition = " AND o.OrderDate >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)";
+                    break;
+                case '6months':
+                    $dateCondition = " AND o.OrderDate >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)";
+                    break;
+                case '1year':
+                    $dateCondition = " AND o.OrderDate >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
+                    break;
+                case 'all':
+                default:
+                    $dateCondition = '';
+                    break;
+            }
+
             $query = "
             SELECT 
                 c.CategoryID,
@@ -475,29 +492,12 @@ class Order
                 COUNT(DISTINCT o.OrderID) AS OrderCount,
                 SUM(od.Quantity) AS ItemCount,
                 SUM(od.Quantity * IFNULL(od.Price, 0)) AS TotalAmount
-            FROM OrderDetail od
-            JOIN `Order` o ON od.OrderID = o.OrderID 
-                AND o.Status = 'delivered_success'
-            ";
-
-            switch ($timePeriod) {
-                case '1month':
-                    $query .= " AND o.OrderDate >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)";
-                    break;
-                case '6months':
-                    $query .= " AND o.OrderDate >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)";
-                    break;
-                case '1year':
-                    $query .= " AND o.OrderDate >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
-                    break;
-                case 'all':
-                default:
-                    break;
-            }
-
-            $query .= "
-            JOIN Book b ON od.ProductID = b.BookID
-            JOIN Category c ON b.CategoryID = c.CategoryID
+            FROM orderdetail od
+            JOIN `order` o ON od.OrderID = o.OrderID
+            JOIN book b ON od.ProductID = b.BookID
+            JOIN category c ON b.CategoryID = c.CategoryID
+            WHERE o.Status = 'delivered_success'
+            {$dateCondition}
             GROUP BY c.CategoryID
             ORDER BY TotalAmount DESC
             ";
@@ -520,7 +520,7 @@ class Order
                     DATE_FORMAT(OrderDate, '%Y-%m') AS Month,
                     COUNT(OrderID) AS OrderCount,
                     SUM(TotalAmount) AS TotalAmount
-                FROM `Order`
+                FROM `order`
                 WHERE Status = 'delivered_success'
                 AND OrderDate >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
                 GROUP BY DATE_FORMAT(OrderDate, '%Y-%m')
@@ -545,7 +545,7 @@ class Order
                     DATE_FORMAT(OrderDate, '%m') AS Month,
                     COUNT(OrderID) AS OrderCount,
                     SUM(TotalAmount) AS TotalAmount
-                FROM `Order`
+                FROM `order`
                 WHERE Status = 'delivered_success'
                 AND YEAR(OrderDate) = :year
                 GROUP BY DATE_FORMAT(OrderDate, '%m')
@@ -593,10 +593,10 @@ class Order
         try {
             $query = "
             SELECT o.*, a.Address, a.City, a.District, a.Ward, u.Name, u.Email, u.Phone, pm.Name AS PaymentMethod
-            FROM `Order` o
-            JOIN Address a ON o.AddressID = a.AddressID
-            JOIN User u ON o.UserID = u.UserID
-            JOIN PaymentMethod pm ON o.PaymentMethodID = pm.PaymentMethodID
+            FROM `order` o
+            JOIN address a ON o.AddressID = a.AddressID
+            JOIN user u ON o.UserID = u.UserID
+            JOIN paymentmethod pm ON o.PaymentMethodID = pm.PaymentMethodID
             WHERE 1=1
         ";
 
@@ -657,8 +657,8 @@ class Order
         try {
             $query = "
                 SELECT COUNT(*) 
-                FROM `Order` o
-                JOIN Address a ON o.AddressID = a.AddressID
+                FROM `order` o
+                JOIN address a ON o.AddressID = a.AddressID
                 WHERE 1=1
             ";
 
@@ -719,9 +719,9 @@ class Order
                     od.Price,
                     (od.Quantity * od.Price) AS Subtotal,
                     c.Name AS Category
-                FROM OrderDetail od
-                JOIN Book b ON od.ProductID = b.BookID
-                JOIN Category c ON b.CategoryID = c.CategoryID
+                FROM orderdetail od
+                JOIN book b ON od.ProductID = b.BookID
+                JOIN category c ON b.CategoryID = c.CategoryID
                 WHERE od.OrderID = ?
             ";
 
@@ -738,7 +738,7 @@ class Order
     public function countOrdersByStatus($status)
     {
         try {
-            $query = "SELECT COUNT(*) FROM `Order` WHERE Status = ?";
+            $query = "SELECT COUNT(*) FROM `order` WHERE Status = ?";
             $stmt = $this->conn->prepare($query);
             $stmt->execute([$status]);
             return (int) $stmt->fetchColumn();
@@ -759,8 +759,8 @@ class Order
                     o.Status, 
                     o.TotalAmount,
                     u.Name AS CustomerName
-                FROM `Order` o
-                JOIN User u ON o.UserID = u.UserID
+                FROM `order` o
+                JOIN user u ON o.UserID = u.UserID
                 ORDER BY o.OrderDate DESC
                 LIMIT :limit
             ";

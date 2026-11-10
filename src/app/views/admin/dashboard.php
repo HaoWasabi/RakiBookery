@@ -3,7 +3,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 mb-0 text-gray-800">Tổng quan</h1>
         <a href="/admin/top-customers" class="btn btn-primary">
-            <i class="fa-duotone fa-crown me-2"></i> Top khách hàng
+            <i class="fas fa-crown me-2"></i> Top khách hàng
         </a>
     </div>
 
@@ -28,7 +28,7 @@
                         </div>
                         <div class="col-auto">
                             <div class="icon-circle bg-primary-light">
-                                <i class="fa-regular fa-file-invoice-dollar"></i>
+                                <i class="fas fa-file-invoice-dollar"></i>
                             </div>
                         </div>
                     </div>
@@ -55,7 +55,7 @@
                         </div>
                         <div class="col-auto">
                             <div class="icon-circle bg-success-light">
-                                <i class="fa-duotone fa-money-bill-wave"></i>
+                                <i class="fas fa-money-bill-wave"></i>
                             </div>
                         </div>
                     </div>
@@ -82,7 +82,7 @@
                         </div>
                         <div class="col-auto">
                             <div class="icon-circle bg-info-light">
-                                <i class="fa-duotone fa-users"></i>
+                                <i class="fas fa-users"></i>
                             </div>
                         </div>
                     </div>
@@ -109,7 +109,7 @@
                         </div>
                         <div class="col-auto">
                             <div class="icon-circle bg-warning-light">
-                                <i class="fa-duotone fa-books"></i>
+                                <i class="fas fa-book-open"></i>
                             </div>
                         </div>
                     </div>

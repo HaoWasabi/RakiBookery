@@ -129,6 +129,65 @@ elseif ($requestUri === "/debug/paypal") {
     echo json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     exit;
 }
+// Chat proxy route (tránh CORS khi gọi Lambda từ browser)
+elseif ($requestUri === "/api/chat" && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    header('Content-Type: application/json; charset=utf-8');
+
+    $raw     = file_get_contents('php://input');
+    $decoded = json_decode($raw, true);
+
+    // Hỗ trợ cả { prompt } và { message } từ JS
+    $prompt  = $decoded['prompt'] ?? $decoded['message'] ?? '';
+    $history = $decoded['history'] ?? [];
+
+    if (empty($prompt)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'MISSING_PROMPT', 'message' => 'Thiếu trường prompt']);
+        exit;
+    }
+
+    $lambdaUrl = 'https://seekbgxzy8.execute-api.ap-southeast-1.amazonaws.com/dev/chat';
+    $payload   = json_encode(['body' => json_encode(['prompt' => $prompt, 'history' => $history])]);
+
+    $ch = curl_init($lambdaUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+        CURLOPT_TIMEOUT        => 30,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,
+    ]);
+
+    $response  = curl_exec($ch);
+    $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    $curlErrno = curl_errno($ch);
+    curl_close($ch);
+
+    if ($curlError) {
+        http_response_code(502);
+        echo json_encode([
+            'error'      => 'PROXY_ERROR',
+            'message'    => $curlError,
+            'curl_errno' => $curlErrno,
+            'http_code'  => $httpCode,
+        ]);
+        exit;
+    }
+
+    // Giải nén body nếu Lambda wrap trong field "body"
+    $data = json_decode($response, true);
+    if (isset($data['body'])) {
+        $inner = is_string($data['body']) ? json_decode($data['body'], true) : $data['body'];
+        if ($inner !== null) $data = $inner;
+    }
+
+    http_response_code($httpCode >= 200 && $httpCode < 300 ? 200 : $httpCode);
+    echo json_encode($data, JSON_UNESCAPED_UNICODE);
+    exit;
+}
 // Statistics Controller routes
 elseif ($requestUri === "/api/statistics/revenue-by-year") {
     $statictisController->getRevenueByYear();

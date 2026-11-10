@@ -21,7 +21,7 @@
                     <a href="/admin/dashboard"
                         class="nav-link d-flex align-items-center <?= $active_menu === 'dashboard' ? 'active' : '' ?>">
                         <span class="menu-icon-wrapper">
-                            <i class="fa-duotone fa-gauge-high menu-icon"></i>
+                            <i class="fas fa-tachometer-alt menu-icon"></i>
                         </span>
                         <span class="nav-text">Tổng quan</span>
                     </a>
@@ -30,7 +30,7 @@
                     <a href="/admin/top-customers"
                         class="nav-link d-flex align-items-center <?= $active_menu === 'top-customers' ? 'active' : '' ?>">
                         <span class="menu-icon-wrapper">
-                            <i class="fa-duotone fa-crown menu-icon"></i>
+                            <i class="fas fa-crown menu-icon"></i>
                         </span>
                         <span class="nav-text">Top khách hàng</span>
                     </a>
@@ -49,7 +49,7 @@
                     <a href="/admin/products"
                         class="nav-link d-flex align-items-center <?= $active_menu === 'products' ? 'active' : '' ?>">
                         <span class="menu-icon-wrapper">
-                            <i class="fa-duotone fa-books menu-icon"></i>
+                            <i class="fas fa-book-open menu-icon"></i>
                         </span>
                         <span class="nav-text">Quản lý sản phẩm</span>
                     </a>
@@ -58,7 +58,7 @@
                     <a href="/admin/categories"
                         class="nav-link d-flex align-items-center <?= $active_menu === 'categories' ? 'active' : '' ?>">
                         <span class="menu-icon-wrapper">
-                            <i class="fa-solid fa-books-medical"></i>
+                            <i class="fas fa-layer-group menu-icon"></i>
                         </span>
                         <span class="nav-text">Quản lý thể loại</span>
                     </a>
@@ -67,7 +67,7 @@
                     <a href="/admin/orders"
                         class="nav-link d-flex align-items-center <?= $active_menu === 'orders' ? 'active' : '' ?>">
                         <span class="menu-icon-wrapper">
-                            <i class="fa-regular fa-file-invoice-dollar"></i>
+                            <i class="fas fa-file-invoice-dollar menu-icon"></i>
                         </span>
                         <span class="nav-text">Quản lý đơn hàng</span>
                     </a>
@@ -76,7 +76,7 @@
                     <a href="/admin/users"
                         class="nav-link d-flex align-items-center <?= $active_menu === 'users' ? 'active' : '' ?>">
                         <span class="menu-icon-wrapper">
-                            <i class="fa-duotone fa-users menu-icon"></i>
+                            <i class="fas fa-users menu-icon"></i>
                         </span>
                         <span class="nav-text">Quản lý người dùng</span>
                     </a>
@@ -97,7 +97,7 @@
             <hr class="border-light opacity-10">
             <a href="/admin/logout" id="logoutBtn" class="nav-link text-danger d-flex align-items-center">
                 <span class="menu-icon-wrapper">
-                    <i class="fa-duotone fa-right-from-bracket menu-icon"></i>
+                    <i class="fas fa-sign-out-alt menu-icon"></i>
                 </span>
                 <span class="nav-text">Đăng xuất</span>
             </a>

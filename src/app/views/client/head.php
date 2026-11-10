@@ -49,6 +49,7 @@
 <!-- Custom CSS -->
 <link rel="stylesheet" href="../../assets/client/css/style.css" />
 <link rel="stylesheet" href="../../assets/client/css/cart-offcanvas.css" />
+<link rel="stylesheet" href="../../assets/client/css/chat-bubble.css" />
 
 <!-- jQuery -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -86,3 +87,6 @@
     let bestSellerBooks = <?php echo json_encode($bestSellerBooks); ?>;
     let allBooks = <?php echo json_encode($books); ?>;
 </script>
+
+<!-- Chat Bubble JS (defer để DOM đã sẵn sàng) -->
+<script src="../../assets/client/js/chat-bubble.js" defer></script>

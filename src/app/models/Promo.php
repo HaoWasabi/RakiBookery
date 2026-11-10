@@ -4,7 +4,7 @@ require_once __DIR__ . '/../../config/database.php';
 class Promo
 {
     private $conn;
-    private $table = "Promo";
+    private $table = "promo";
 
     public function __construct()
     {

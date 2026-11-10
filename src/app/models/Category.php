@@ -4,7 +4,7 @@ require_once __DIR__ . '/../../config/database.php';
 class Category
 {
     private $conn;
-    private $table = "Category";
+    private $table = "category";
 
     public function __construct()
     {

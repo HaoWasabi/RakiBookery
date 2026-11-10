@@ -21,8 +21,8 @@ class StatisticModel
         try {
             $query = "
                 SELECT u.UserID, u.Name, SUM(o.TotalAmount) AS TotalSpent
-                FROM `Order` o
-                JOIN User u ON o.UserID = u.UserID
+                FROM `order` o
+                JOIN user u ON o.UserID = u.UserID
                 WHERE o.Status = 'delivered_success' 
                 AND DATE(o.OrderDate) BETWEEN ? AND ?
                 GROUP BY u.UserID, u.Name

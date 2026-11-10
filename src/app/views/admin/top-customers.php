@@ -26,7 +26,7 @@ function getOrderStatusLabel($status)
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 mb-0 text-gray-800">Top khách hàng</h1>
         <a href="/admin/dashboard" class="btn btn-secondary">
-            <i class="fa-duotone fa-arrow-left me-2"></i> Quay lại tổng quan
+            <i class="fas fa-arrow-left me-2"></i> Quay lại tổng quan
         </a>
     </div>
 
@@ -146,7 +146,7 @@ function getOrderStatusLabel($status)
                     </div>
                 <?php elseif (isset($_GET['start_date']) && isset($_GET['end_date'])): ?>
                     <div class="alert alert-warning d-flex align-items-center">
-                        <i class="fa-duotone fa-triangle-exclamation me-2 fs-4"></i>
+                        <i class="fas fa-exclamation-triangle me-2 fs-4"></i>
                         <div>Không có khách hàng nào mua sắm trong khoảng thời gian đã chọn.</div>
                     </div>
                 <?php endif; ?>
@@ -286,7 +286,7 @@ function getOrderStatusLabel($status)
                             // Show no data alert
                             alertContainer.innerHTML = `
                             <div class="alert alert-warning d-flex align-items-center">
-                                <i class="fa-duotone fa-triangle-exclamation me-2 fs-4"></i>
+                                <i class="fas fa-exclamation-triangle me-2 fs-4"></i>
                                 <div>Không có khách hàng nào mua sắm trong khoảng thời gian đã chọn.</div>
                             </div>
                         `;
@@ -300,7 +300,7 @@ function getOrderStatusLabel($status)
 
                     alertContainer.innerHTML = `
                         <div class="alert alert-danger d-flex align-items-center">
-                            <i class="fa-duotone fa-circle-exclamation me-2 fs-4"></i>
+                            <i class="fas fa-exclamation-circle me-2 fs-4"></i>
                             <div>Đã xảy ra lỗi khi tải dữ liệu. Vui lòng thử lại sau.</div>
                         </div>
                     `;
