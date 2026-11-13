@@ -12,7 +12,9 @@ README*
 node_modules/
 vendor/
 coverage/
+tests/
 *.log
+*.md
 Dockerfile*
 docker-compose*.yml
 
