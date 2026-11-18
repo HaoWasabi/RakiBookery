@@ -5,7 +5,7 @@
         <!-- Product Image -->
         <div class="col-md-5">
             <div class="book-image-container">
-                <img src="<?= $book['ImageURL'] ?? '' ?>" alt="<?= $book['Name'] ?? 'Book' ?>"
+                <img src="<?= htmlspecialchars($book['ImageURL'] ?? '/img/img-not-available.png', ENT_QUOTES) ?>" alt="<?= $book['Name'] ?? 'Book' ?>"
                     class="img-fluid book-main-image">
                 <?php if (isset($book['Stock']) && $book['Stock'] <= 0): ?>
                     <div class="out-of-stock-overlay">

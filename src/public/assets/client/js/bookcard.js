@@ -7,7 +7,7 @@ export const createBookCard = (book) => {
                 ${isOutOfStock ? '<div class="out-of-stock-label">Tạm hết hàng</div>' : ''}
                 <div class="book-img-container">
                     <a href="/product-detail?id=${encodeURIComponent(book.BookID)}" title="${book.Name}">
-                        <img src="${book.ImageURL ? book.ImageURL : '../../../img/img-not-available.png'}" class="book-img" alt="${book.Name}"  loading="lazy">
+                        <img src="${book.ImageURL || '/img/img-not-available.png'}" class="book-img" alt="${book.Name}" loading="lazy">
                     </a>
                     ${isOutOfStock ? '<div class="book-img-overlay"></div>' : ''}
                     

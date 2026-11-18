@@ -7,6 +7,16 @@
         </a>
     </div>
 
+    <?php if (!empty($useMock)): ?>
+    <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
+        <i class="fas fa-flask me-2 fs-5"></i>
+        <div>
+            <strong>Chế độ Mock đang bật</strong> — Dữ liệu hiển thị là dữ liệu giả lập, không phải dữ liệu thật từ database và S3.
+            Để chuyển sang dữ liệu thật, đổi <code>BOOK_DATA_SOURCE=live</code> trong file <code>.env</code>.
+        </div>
+    </div>
+    <?php endif; ?>
+
     <div class="card mb-4">
         <div class="card-header">
             <h6 class="m-0 font-weight-bold">Tìm kiếm & Lọc</h6>
@@ -81,7 +91,7 @@
                                     <td><?= $book['BookID'] ?></td>
                                     <td>
                                         <?php if (isset($book['ImageURL']) && $book['ImageURL']): ?>
-                                            <img src="<?= $book['ImageURL'] ?>" alt="<?= $book['Name'] ?>" class="img-thumbnail"
+                                            <img src="<?= s3_url($book['ImageURL']) ?>" alt="<?= $book['Name'] ?>" class="img-thumbnail"
                                                 style="height: 80px; width: auto; object-fit: contain;">
                                         <?php else: ?>
                                             <div class="text-center text-muted">

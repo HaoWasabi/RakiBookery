@@ -1,24 +1,31 @@
 <?php
 require_once __DIR__ . '/../models/Book.php';
+require_once __DIR__ . '/../models/MockBookData.php';
 require_once __DIR__ . '/../models/Category.php';
 require_once __DIR__ . '/../controllers/BaseController.php';
+require_once __DIR__ . '/../../config/s3.php';
 
 class BookController extends BaseController
 {
     private $bookModel;
     private $categoryModel;
 
+    /** true → dùng MockBookData, false → dùng DB + S3 thật */
+    private bool $useMock;
+
     public function __construct()
     {
-        $this->bookModel = new Book();
+        $this->useMock = (env('BOOK_DATA_SOURCE', 'live') === 'mock');
+
+        $this->bookModel    = new Book();
         $this->categoryModel = new Category();
     }
 
     // Hiển thị danh sách sách
     public function index()
     {
-        $books = $this->bookModel->getAllBooks();
-        require_once __DIR__ . '/../views/admin-books.php';  // ✅ Đúng
+        $books = $this->getAllBooks();
+        require_once __DIR__ . '/../views/admin-books.php';
     }
 
     // Tạo sách mới
@@ -93,55 +100,83 @@ class BookController extends BaseController
 
     public function getAllBooks()
     {
-        return $this->bookModel->getAllBooks();
+        return $this->useMock
+            ? MockBookData::getAll()
+            : $this->bookModel->getAllBooks();
     }
 
     public function getAllAvailableBooks()
     {
-        return $this->bookModel->getAllAvailableBooks();
+        return $this->useMock
+            ? MockBookData::getAvailable()
+            : $this->bookModel->getAllAvailableBooks();
     }
 
     public function getBookById($bookId)
     {
-        return $this->bookModel->getBookById($bookId);
+        return $this->useMock
+            ? MockBookData::getById((int) $bookId)
+            : $this->bookModel->getBookById($bookId);
     }
 
     public function getAvailableBookById($bookId)
     {
+        if ($this->useMock) {
+            $book = MockBookData::getById((int) $bookId);
+            return ($book && $book['Status'] == 1) ? $book : null;
+        }
         return $this->bookModel->getAvailableBookById($bookId);
     }
 
     public function getTopBestSellingBooks($limit = 5)
     {
-        return $this->bookModel->getTopBestSellingBooks($limit);
+        return $this->useMock
+            ? MockBookData::getTopBestSelling($limit)
+            : $this->bookModel->getTopBestSellingBooks($limit);
     }
+
+    /** Presign ImageURL cho mảng sách trước khi trả về JSON/view */
+    private function presignImageUrls(array &$books): void
+    {
+        foreach ($books as &$book) {
+            if (!empty($book['ImageURL'])) {
+                $book['ImageURL'] = s3_url($book['ImageURL']);
+            }
+        }
+    }
+
     public function getFilteredBooks()
     {
+        $this->requireAdmin();
         $categoryId = isset($_GET['category']) ? $_GET['category'] : '';
-        $status = isset($_GET['status']) ? $_GET['status'] : '';
+        $status     = isset($_GET['status'])   ? $_GET['status']   : '';
 
-        // Load books based on filters
-        if (!empty($categoryId) || $status !== '') {
-            $books = $this->bookModel->getFilteredBooks(0, 0, '', '', $categoryId, $status);
+        if ($this->useMock) {
+            $books      = MockBookData::getFiltered($categoryId, $status);
+            $categories = MockBookData::getCategories();
         } else {
-            // Get all books without pagination
-            $books = $this->bookModel->getAllBooks();
+            if (!empty($categoryId) || $status !== '') {
+                $books = $this->bookModel->getFilteredBooks(0, 0, '', '', $categoryId, $status);
+            } else {
+                $books = $this->bookModel->getAllBooks();
+            }
+            $categories = $this->categoryModel->getAll();
         }
 
-        // Get categories for the filter dropdown
-        $categories = $this->categoryModel->getAll();
+        $this->presignImageUrls($books);
 
         $this->responseJson([
             'success' => true,
-            'data' => [
-                'books' => $books,
-                'categories' => $categories
-            ]
+            'data'    => [
+                'books'      => $books,
+                'categories' => $categories,
+            ],
         ]);
     }
 
     public function createBook()
     {
+        $this->requireAdmin();
         $this->requirePost();
 
         $productData = $this->getRequestData();
@@ -154,11 +189,13 @@ class BookController extends BaseController
         $productData['Format'] = !empty($productData['Format']) ? $productData['Format'] : null;
 
         // Handle image upload
-        $imageURL = '/img/img-not-available.png'; // Default image path
+        $imageURL = '/img/img-not-available.png';
         if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
-            $uploadedImage = $this->uploadImage($_FILES['image']);
-            if ($uploadedImage) {
-                $imageURL = $uploadedImage;
+            // Lấy BookID mới sau khi insert để đặt tên file
+            // Upload trước với tên tạm, sau đó rename nếu cần
+            $tempUrl = $this->uploadImage($_FILES['image'], null);
+            if ($tempUrl) {
+                $imageURL = $tempUrl;
             }
         }
 
@@ -167,6 +204,20 @@ class BookController extends BaseController
         $result = $this->bookModel->addBook($productData);
 
         if ($result) {
+            $newBookId = (int) $result;
+
+            // Nếu đã upload ảnh tạm, re-upload với tên theo BookID mới
+            if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK && $imageURL !== '/img/img-not-available.png') {
+                // Xóa ảnh tạm cũ trên S3
+                s3_delete($imageURL);
+
+                // Upload lại với BookID
+                $finalUrl = $this->uploadImage($_FILES['image'], $newBookId);
+                if ($finalUrl) {
+                    $this->bookModel->updateBook($newBookId, ['ImageURL' => $finalUrl]);
+                    $imageURL = $finalUrl;
+                }
+            }
             $this->responseJson([
                 'success' => true,
                 'message' => 'Thêm sản phẩm thành công',
@@ -183,6 +234,7 @@ class BookController extends BaseController
 
     public function updateBook()
     {
+        $this->requireAdmin();
         $this->requirePost();
 
         $productData = $this->getRequestData();
@@ -196,8 +248,15 @@ class BookController extends BaseController
 
         // Handle image upload - keep existing image if no new one uploaded
         if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
-            // User uploaded a new image
-            $uploadedImage = $this->uploadImage($_FILES['image']);
+            $bookId = !empty($productData['id']) ? (int) $productData['id'] : null;
+
+            // Xóa ảnh cũ trên S3 (nếu tên theo uniqid cũ, không cần xóa thủ công vì uploadImage đã xóa theo ID)
+            $oldImageURL = $_POST['ImageURL'] ?? '';
+            if (!empty($oldImageURL) && $bookId === null) {
+                s3_delete($oldImageURL);
+            }
+
+            $uploadedImage = $this->uploadImage($_FILES['image'], $bookId);
             if ($uploadedImage) {
                 $productData['ImageURL'] = $uploadedImage;
             }
@@ -225,6 +284,7 @@ class BookController extends BaseController
     }
     public function deleteProduct()
     {
+        $this->requireAdmin();
         $this->requirePost();
 
         $data = $this->getRequestData();
@@ -271,42 +331,9 @@ class BookController extends BaseController
         }
     }
 
-    private function uploadImage($file)
+    private function uploadImage($file, ?int $bookId = null): string|false
     {
-        $targetDir = ROOT_PATH . "/public/uploads/";
-
-        // Create directory if it doesn't exist
-        if (!file_exists($targetDir)) {
-            mkdir($targetDir, 0777, true);
-        }
-
-        $fileName = uniqid() . '_' . basename($file['name']);
-        $targetFilePath = $targetDir . $fileName;
-
-        // Check if image file is an actual image
-        $check = getimagesize($file['tmp_name']);
-        if ($check === false) {
-            return false;
-        }
-
-        // Check file size (limit to 5MB)
-        if ($file['size'] > 5000000) {
-            return false;
-        }
-
-        // Allow certain file formats
-        $allowedTypes = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-        $fileType = strtolower(pathinfo($targetFilePath, PATHINFO_EXTENSION));
-        if (!in_array($fileType, $allowedTypes)) {
-            return false;
-        }
-
-        // Upload file
-        if (move_uploaded_file($file['tmp_name'], $targetFilePath)) {
-            return '/uploads/' . $fileName;
-        } else {
-            return false;
-        }
+        return s3_upload($file, $bookId);
     }
 }
 

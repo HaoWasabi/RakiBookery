@@ -146,7 +146,7 @@
                     <tr data-id="${book.BookID}">
                         <td>
                             <a href="/product-detail?id=${book.BookID}">
-                                <img src="${book.ImageURL}" alt="${book.Name}" class="img-fluid" 
+                                <img src="${book.ImageURL || '/img/img-not-available.png'}" alt="${book.Name}" class="img-fluid" 
                                     style="max-width: 80px; max-height: 120px;">
                             </a>
                         </td>

@@ -263,6 +263,7 @@ class UserController extends BaseController
 
     public function toggleUserStatus()
     {
+        $this->requireAdmin();
         $this->requirePost();
 
         $data = $this->getRequestData();
@@ -322,10 +323,8 @@ class UserController extends BaseController
 
     public function addUser()
     {
+        $this->requireAdmin();
         $this->requirePost();
-
-        $userData = $this->getRequestData();
-        // Check if phone already exists
         if (isset($userData['Phone']) && $userData['Phone'] && $this->userModel->phoneExists($userData['Phone'])) {
             $this->responseJson([
                 'success' => false,
@@ -365,6 +364,7 @@ class UserController extends BaseController
 
     public function updateUser()
     {
+        $this->requireAdmin();
         $this->requirePost();
 
         $userData = $this->getRequestData();

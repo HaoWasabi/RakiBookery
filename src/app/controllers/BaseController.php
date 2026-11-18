@@ -36,4 +36,15 @@ class BaseController
         header('Location: ' . $url);
         exit;
     }
+
+    // Kiểm tra quyền admin cho các API endpoint (trả JSON thay vì redirect)
+    protected function requireAdmin()
+    {
+        if (!isset($_SESSION['UserID']) || !isset($_SESSION['Role']) || $_SESSION['Role'] !== 'admin') {
+            $this->responseJson([
+                'success' => false,
+                'message' => 'Bạn không có quyền thực hiện hành động này'
+            ], 401);
+        }
+    }
 }

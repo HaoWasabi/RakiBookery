@@ -49,6 +49,7 @@ class StatisticsController extends BaseController
 
     public function getRevenueByYear()
     {
+        $this->requireAdmin();
         $year = isset($_GET['year']) ? (int) $_GET['year'] : (int) date('Y');
         $revenueData = $this->orderModel->getRevenueByMonthForYear($year);
 
@@ -60,6 +61,7 @@ class StatisticsController extends BaseController
 
     public function getTopCustomers()
     {
+        $this->requireAdmin();
         $startDate = isset($_GET['start_date']) && $_GET['start_date'] !== ''
             ? $_GET['start_date'] . ' 00:00:00'
             : null;
@@ -79,6 +81,7 @@ class StatisticsController extends BaseController
     // Thống kê sản phẩm được bán theo loại
     public function getOrdersByCategory()
     {
+        $this->requireAdmin();
         $timePeriod = isset($_GET['period']) ? $_GET['period'] : 'all';
         $ordersByCategory = $this->orderModel->getOrdersByCategoryByPeriod($timePeriod);
 

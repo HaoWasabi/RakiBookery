@@ -74,6 +74,7 @@ class CategoryController extends BaseController
 
     public function addCategory()
     {
+        $this->requireAdmin();
         $this->requirePost();
 
         $categoryData = $this->getRequestData();
@@ -105,6 +106,7 @@ class CategoryController extends BaseController
 
     public function updateCategory()
     {
+        $this->requireAdmin();
         $this->requirePost();
 
         $categoryData = $this->getRequestData();

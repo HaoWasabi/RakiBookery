@@ -32,6 +32,7 @@ class OrderController extends BaseController
     // Cập nhật trạng thái đơn hàng
     public function updateStatus()
     {
+        $this->requireAdmin();
         $this->requirePost();
 
         $data = $this->getRequestData();
@@ -198,6 +199,7 @@ class OrderController extends BaseController
 
     public function getFilteredOrders()
     {
+        $this->requireAdmin();
         // Get filter parameters from query string
         $status = isset($_GET['status']) ? $_GET['status'] : '';
         $startDate = isset($_GET['start_date']) ? $_GET['start_date'] : '';
@@ -223,6 +225,7 @@ class OrderController extends BaseController
 
     public function getRecentOrders()
     {
+        $this->requireAdmin();
         $limit = isset($_GET['limit']) ? (int) $_GET['limit'] : 5;
         $recentOrders = $this->orderModel->getRecentOrders($limit);
 

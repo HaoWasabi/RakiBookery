@@ -79,7 +79,7 @@
         // Cancel button click handler
         cancelBtn.addEventListener('click', function () {
             document.getElementById('image').value = '';
-            restorePreviewState(getInitialPreviewState('<?= $book['ImageURL'] ?>'));
+            restorePreviewState(getInitialPreviewState('<?= s3_url($book['ImageURL'] ?? null, '') ?>'));
 
             formFields.forEach(field => {
                 if (originalValues[field.name]) {

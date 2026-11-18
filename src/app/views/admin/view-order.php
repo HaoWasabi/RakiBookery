@@ -195,7 +195,7 @@ $pct = min(($statusStage/3)*100, 100);
                     <?php foreach ($orderDetails as $i => $item): ?>
                     <tr>
                         <td><?= $i + 1 ?></td>
-                        <td><img src="<?= $item['ImageURL'] ?>" alt="" style="width:65px;height:85px;object-fit:cover;border-radius:4px;"></td>
+                        <td><img src="<?= s3_url($item['ImageURL'] ?? null) ?>" alt="" style="width:65px;height:85px;object-fit:cover;border-radius:4px;"></td>
                         <td>
                             <div class="fw-medium"><?= htmlspecialchars($item['ProductName']) ?></div>
                             <div class="text-secondary small">

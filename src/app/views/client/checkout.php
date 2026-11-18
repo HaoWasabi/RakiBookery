@@ -391,7 +391,7 @@
                     html += `
                 <tr>
                     <td>
-                        <img src="${book.ImageURL}" alt="${book.Name}" class="img-fluid" 
+                        <img src="${book.ImageURL || '/img/img-not-available.png'}" alt="${book.Name}" class="img-fluid" 
                             style="max-width: 60px; max-height: 90px;">
                     </td>
                     <td>

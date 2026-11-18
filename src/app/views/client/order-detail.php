@@ -152,7 +152,7 @@
                                         <div class="d-flex align-items-center">
                                             <div class="item-number"><?php echo $index + 1; ?></div>
                                             <div class="flex-shrink-0 ms-2">
-                                                <img src="<?php echo $item['ImageURL']; ?>"
+                                                <img src="<?php echo s3_url($item['ImageURL'] ?? null); ?>"
                                                     alt="<?php echo $item['ProductName']; ?>" class="img-fluid rounded"
                                                     style="width: 80px; height: 100px; object-fit: cover;">
                                             </div>
@@ -205,7 +205,7 @@
                                         <div class="d-flex align-items-center">
                                             <div class="item-number"><?php echo $index + 1; ?></div>
                                             <div class="flex-shrink-0 ms-2">
-                                                <img src="<?php echo $item['ImageURL']; ?>"
+                                                <img src="<?php echo s3_url($item['ImageURL'] ?? null); ?>"
                                                     alt="<?php echo $item['ProductName']; ?>" class="img-fluid rounded"
                                                     style="width: 80px; height: 100px; object-fit: cover;">
                                             </div>

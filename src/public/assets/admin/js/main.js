@@ -1,4 +1,43 @@
 $(document).ready(function () {
+    // ── Interceptor toàn cục: redirect về login khi session hết hạn (HTTP 401) ──
+    const _origFetch = window.fetch;
+    window.fetch = function (...args) {
+        return _origFetch.apply(this, args).then(function (response) {
+            if (response.status === 401) {
+                // Clone để đọc body mà không làm hỏng response gốc
+                response.clone().json().then(function (data) {
+                    Swal.fire({
+                        title: 'Phiên đăng nhập hết hạn',
+                        text: 'Vui lòng đăng nhập lại để tiếp tục.',
+                        icon: 'warning',
+                        confirmButtonColor: '#e74c3c',
+                        confirmButtonText: 'Đăng nhập lại'
+                    }).then(function () {
+                        window.location.href = '/admin/login';
+                    });
+                }).catch(function () {
+                    window.location.href = '/admin/login';
+                });
+            }
+            return response;
+        });
+    };
+
+    // Interceptor cho jQuery AJAX (DataTables và các nơi dùng $.ajax/$.get/$.post)
+    $(document).ajaxComplete(function (event, xhr) {
+        if (xhr.status === 401) {
+            Swal.fire({
+                title: 'Phiên đăng nhập hết hạn',
+                text: 'Vui lòng đăng nhập lại để tiếp tục.',
+                icon: 'warning',
+                confirmButtonColor: '#e74c3c',
+                confirmButtonText: 'Đăng nhập lại'
+            }).then(function () {
+                window.location.href = '/admin/login';
+            });
+        }
+    });
+
     // Close sidebar on mobile when clicking outside
     $(document).on('click touchstart', function (e) {
         if ($(window).width() < 768) {

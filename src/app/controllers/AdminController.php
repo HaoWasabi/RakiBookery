@@ -1,17 +1,20 @@
 <?php
 require_once ROOT_PATH . '/app/models/Category.php';
 require_once ROOT_PATH . '/app/models/Book.php';
+require_once ROOT_PATH . '/app/models/MockBookData.php';
 require_once ROOT_PATH . '/app/models/User.php';
 require_once ROOT_PATH . '/app/models/Order.php';
 require_once ROOT_PATH . '/app/models/PaymentMethod.php';
 require_once ROOT_PATH . '/app/models/Promo.php';
 require_once ROOT_PATH . '/app/controllers/BaseController.php';
+require_once ROOT_PATH . '/app/controllers/BookController.php';
 
 class AdminController extends BaseController
 {
     private $data = [];
     private $categoryModel;
     private $bookModel;
+    private $bookController;
     private $userModel;
     private $orderModel;
     private $paymentMethodModel;
@@ -19,12 +22,13 @@ class AdminController extends BaseController
 
     public function __construct()
     {
-        $this->categoryModel = new Category();
-        $this->bookModel = new Book();
-        $this->userModel = new User();
-        $this->orderModel = new Order();
+        $this->categoryModel      = new Category();
+        $this->bookModel          = new Book();
+        $this->bookController     = new BookController();
+        $this->userModel          = new User();
+        $this->orderModel         = new Order();
         $this->paymentMethodModel = new PaymentMethod();
-        $this->promoModel = new Promo();
+        $this->promoModel         = new Promo();
 
         $this->data['paymentMethods'] = $this->paymentMethodModel->getAllPaymentMethods();
     }
@@ -54,7 +58,9 @@ class AdminController extends BaseController
         $this->data['stats']['totalOrders'] = $this->orderModel->getTotalOrders();
         $this->data['stats']['totalRevenue'] = $this->orderModel->getTotalRevenue();
         $this->data['stats']['totalUsers'] = $this->userModel->getTotalUsers();
-        $this->data['stats']['totalProducts'] = $this->bookModel->getTotalBooks();
+        $this->data['stats']['totalProducts'] = $this->bookController->getAllBooks() 
+            ? count($this->bookController->getAllAvailableBooks())
+            : 0;
         $this->data['ordersByCategory'] = $this->orderModel->getOrdersByCategory("5");
         $this->data['revenueByMonth'] = $this->orderModel->getRevenueByMonth();
 
@@ -64,11 +70,11 @@ class AdminController extends BaseController
     {
         $this->checkAdminAuth();
 
-        // Get all books without pagination
-        $this->data['books'] = $this->bookModel->getAllBooks();
-
-        // Get categories for the filter dropdown
-        $this->data['categories'] = $this->categoryModel->getAll();
+        $this->data['books']      = $this->bookController->getAllBooks();
+        $this->data['categories'] = (env('BOOK_DATA_SOURCE', 'live') === 'mock')
+            ? MockBookData::getCategories()
+            : $this->categoryModel->getAll();
+        $this->data['useMock']    = (env('BOOK_DATA_SOURCE', 'live') === 'mock');
 
         $this->renderView('products', 'Quản lý sản phẩm', 'products');
     }

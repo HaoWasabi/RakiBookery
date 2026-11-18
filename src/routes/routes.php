@@ -9,9 +9,9 @@ require_once "../app/controllers/StatisticsController.php";
 require_once "../app/controllers/AuthController.php";
 require_once "../app/controllers/CategoryController.php";
 require_once "../app/controllers/UserController.php";
+require_once "../app/controllers/BookController.php";
 require_once "../app/controllers/ClientController.php";
 require_once "../app/controllers/AdminController.php";
-require_once "../app/controllers/BookController.php";
 require_once "../app/controllers/PayPalController.php";
 
 $orderController = new OrderController();

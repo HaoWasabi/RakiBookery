@@ -14,5 +14,8 @@ require_once "../config/session.php";
 // Kết nối database
 require_once "../config/database.php";
 
+// Cấu hình S3 và các hàm tiện ích ảnh
+require_once "../config/s3.php";
+
 // Định tuyến (sử dụng routes.php để xử lý request)
 require_once "../routes/routes.php";

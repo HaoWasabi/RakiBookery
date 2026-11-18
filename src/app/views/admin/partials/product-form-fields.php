@@ -158,14 +158,14 @@
                 <?php endif; ?>
             </div>
             <?php if (isset($isEditMode) && $isEditMode): ?>
-                <input type="hidden" name="ImageURL" value="<?= $book['ImageURL'] ?? '' ?>">
+                <input type="hidden" name="ImageURL" value="<?= htmlspecialchars($book['ImageURL'] ?? '', ENT_QUOTES) ?>">
             <?php endif; ?>
         </div>
         <div class="mb-3">
             <div class="text-center p-3 border rounded" id="image-preview-container" ondragover="handleDragOver(event)"
                 ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
                 <?php if (isset($book['ImageURL']) && $book['ImageURL']): ?>
-                    <img id="image-preview" src="<?= $book['ImageURL'] ?>" alt="<?= $book['Name'] ?? '' ?>"
+                    <img id="image-preview" src="<?= s3_url($book['ImageURL']) ?>" alt="<?= $book['Name'] ?? '' ?>"
                         class="img-fluid" style="max-height: 300px;">
                     <div id="no-image" class="text-muted py-5 d-none">
                         <i class="fas fa-image fa-4x mb-3"></i>

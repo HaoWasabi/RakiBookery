@@ -1,30 +1,32 @@
 <?php
 require_once ROOT_PATH . '/app/models/Category.php';
 require_once ROOT_PATH . '/app/models/Book.php';
+require_once ROOT_PATH . '/app/models/MockBookData.php';
 require_once ROOT_PATH . '/app/models/User.php';
 require_once ROOT_PATH . '/app/models/PaymentMethod.php';
+require_once ROOT_PATH . '/app/controllers/BookController.php';
 class ClientController extends BaseController
 {
     private $data = [];
     private $categoryModel;
-    private $bookModel;
+    private $bookController;
     private $userModel;
     private $orderModel;
     private $paymentMethodModel;
     public function __construct()
     {
-        $this->categoryModel = new Category();
-        $this->bookModel = new Book();
-        $this->userModel = new User();
-        $this->orderModel = new Order();
+        $this->categoryModel  = new Category();
+        $this->bookController = new BookController();
+        $this->userModel      = new User();
+        $this->orderModel     = new Order();
         $this->paymentMethodModel = new PaymentMethod();
 
-        $this->data['bestSellerBooks'] = $this->bookModel->getTopBestSellingBooks(4);
+        $this->data['bestSellerBooks'] = $this->bookController->getTopBestSellingBooks(4);
     }
 
     public function index()
     {
-        $this->data['bestSellerBooks'] = $this->bookModel->getTopBestSellingBooks(4);
+        $this->data['bestSellerBooks'] = $this->bookController->getTopBestSellingBooks(4);
         $this->renderView('home', 'RakiBookery');
     }
 
@@ -37,7 +39,7 @@ class ClientController extends BaseController
 
     public function productDetail()
     {
-        $this->data['book'] = $this->bookModel->getAvailableBookById($_GET['id']);
+        $this->data['book'] = $this->bookController->getAvailableBookById($_GET['id']);
         if (!$this->data['book']) {
             $this->notFound();
             return;
@@ -168,25 +170,55 @@ class ClientController extends BaseController
         // Trả về thành công
         $this->responseJson(['success' => true, 'message' => 'Cart synced to session']);
     }
+    /**
+     * Presign ImageURL cho tất cả sách trong mảng để JS dùng được.
+     * Áp dụng cho cả mảng sách lẫn object sách đơn lẻ.
+     */
+    private function presignBooks(array &$books): void
+    {
+        foreach ($books as &$book) {
+            if (!empty($book['ImageURL'])) {
+                $book['ImageURL'] = s3_url($book['ImageURL']);
+            }
+        }
+    }
+
+    private function presignBook(array &$book): void
+    {
+        if (!empty($book['ImageURL'])) {
+            $book['ImageURL'] = s3_url($book['ImageURL']);
+        }
+    }
+
     private function renderView($viewName, $page_title, $show_breadcrumb = false, $show_nav = true, $breadcrumbs = [])
     {
-
         if (isset($_SESSION['UserID']) && $_SESSION['Role'] == 'admin') {
             header('Location: /logout');
             exit();
         }
 
         $this->data['categories'] = $this->categoryModel->getAll();
-        $this->data['books'] = $this->bookModel->getAllAvailableBooks();
+
+        $books = $this->bookController->getAllAvailableBooks();
+        $this->presignBooks($books);
+        $this->data['books'] = $books;
+
+        // Presign bestSellerBooks nếu có
+        if (!empty($this->data['bestSellerBooks'])) {
+            $this->presignBooks($this->data['bestSellerBooks']);
+        }
+
+        // Presign single book nếu có (product-detail)
+        if (!empty($this->data['book']) && is_array($this->data['book']) && isset($this->data['book']['BookID'])) {
+            $this->presignBook($this->data['book']);
+        }
 
         extract($this->data);
 
-        // Bắt đầu bộ nhớ đệm và include view con
         ob_start();
         include(ROOT_PATH . "/app/views/client/{$viewName}.php");
         $content = ob_get_clean();
 
-        // Sau đó include layout chính
         include(ROOT_PATH . '/app/views/client/index.php');
     }
 

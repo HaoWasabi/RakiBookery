@@ -13,6 +13,7 @@ class PromoController extends BaseController
 
     public function addPromo()
     {
+        $this->requireAdmin();
         $this->requirePost();
 
         $promoData = $this->getRequestData();
@@ -44,6 +45,7 @@ class PromoController extends BaseController
 
     public function updatePromo()
     {
+        $this->requireAdmin();
         $this->requirePost();
 
         $promoData = $this->getRequestData();
@@ -75,6 +77,7 @@ class PromoController extends BaseController
 
     public function deletePromo()
     {
+        $this->requireAdmin();
         $this->requirePost();
 
         $data = $this->getRequestData();
@@ -103,6 +106,7 @@ class PromoController extends BaseController
 
     public function restorePromo()
     {
+        $this->requireAdmin();
         $this->requirePost();
 
         $data = $this->getRequestData();
@@ -157,6 +161,7 @@ class PromoController extends BaseController
 
     public function getPromosData()
     {
+        $this->requireAdmin();
         $promos = $this->promoModel->getAll();
         $this->responseJson([
             'success' => true,
