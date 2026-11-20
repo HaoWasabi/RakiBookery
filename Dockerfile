@@ -21,7 +21,7 @@ WORKDIR /var/www/html
 
 # Copy file quản lý gói trước để tận dụng cache Docker
 COPY composer.json composer.lock* ./
-RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist || true
+RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
 
 # ─────────────────────────────────────────────
 # Stage 2: runtime (Môi trường chạy chính thức)
