@@ -1,0 +1,248 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: RakiBookery - Compute Stack (ECS Fargate + ALB) - Sử dụng VPC & Data stack có sẵn
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: rakibookery
+  Environment:
+    Type: String
+    Default: prod
+  ContainerPort:
+    Type: Number
+    Default: 80
+  DesiredCount:
+    Type: Number
+    Default: 1
+  Cpu:
+    Type: String
+    Default: "256"
+  Memory:
+    Type: String
+    Default: "512"
+  ImageTag:
+    Type: String
+    Default: latest
+
+Resources:
+
+  # ==================== IAM Roles ====================
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-${Environment}-ecs-execution-role"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: SecretsAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !ImportValue 
+                  Fn::Sub: "${ProjectName}-${Environment}-DBSecretArn"
+
+  ECSTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-${Environment}-ecs-task-role"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub 
+                    - "arn:aws:s3:::${BucketName}"
+                    - BucketName: !ImportValue 
+                        Fn::Sub: "${ProjectName}-${Environment}-StaticBucket"
+                  - !Sub 
+                    - "arn:aws:s3:::${BucketName}/*"
+                    - BucketName: !ImportValue 
+                        Fn::Sub: "${ProjectName}-${Environment}-StaticBucket"
+                  - !Sub 
+                    - "arn:aws:s3:::${BucketName}"
+                    - BucketName: !ImportValue 
+                        Fn::Sub: "${ProjectName}-${Environment}-MediaBucket"
+                  - !Sub 
+                    - "arn:aws:s3:::${BucketName}/*"
+                    - BucketName: !ImportValue 
+                        Fn::Sub: "${ProjectName}-${Environment}-MediaBucket"
+
+  # ==================== ECS Cluster ====================
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub "${ProjectName}-${Environment}-cluster"
+      CapacityProviders:
+        - FARGATE
+        - FARGATE_SPOT
+      DefaultCapacityProviderStrategy:
+        - CapacityProvider: FARGATE
+          Weight: 1
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-cluster"
+
+  # ==================== CloudWatch Log Group ====================
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/ecs/${ProjectName}-${Environment}"
+      RetentionInDays: 14
+
+  # ==================== Task Definition ====================
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub "${ProjectName}-${Environment}-app"
+      RequiresCompatibilities:
+        - FARGATE
+      NetworkMode: awsvpc
+      Cpu: !Ref Cpu
+      Memory: !Ref Memory
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt ECSTaskRole.Arn
+      ContainerDefinitions:
+        - Name: app
+          Image: !Sub 
+            - "${ECRUri}:${ImageTag}"
+            - ECRUri: !ImportValue 
+                Fn::Sub: "${ProjectName}-${Environment}-ECRUri"
+          PortMappings:
+            - ContainerPort: !Ref ContainerPort
+              Protocol: tcp
+          Essential: true
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: app
+          Environment:
+            - Name: APP_ENV
+              Value: !Ref Environment
+            - Name: DB_HOST
+              Value: rakibookery-db-instance.cvmciswssrkg.ap-southeast-1.rds.amazonaws.com
+
+  # ==================== Application Load Balancer ====================
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub "${ProjectName}-${Environment}-alb"
+      Type: application
+      Scheme: internet-facing
+      SecurityGroups:
+        - !ImportValue 
+            Fn::Sub: "${ProjectName}-${Environment}-ALBSG"
+      Subnets:
+        - !ImportValue 
+            Fn::Sub: "${ProjectName}-${Environment}-PublicSubnet1"
+        - !ImportValue 
+            Fn::Sub: "${ProjectName}-${Environment}-PrivateSubnet1"
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-alb"
+
+  # ==================== Target Group ====================
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub "${ProjectName}-${Environment}-tg"
+      Port: !Ref ContainerPort
+      Protocol: HTTP
+      VpcId: !ImportValue 
+          Fn::Sub: "${ProjectName}-${Environment}-VPCId"
+      TargetType: ip
+      HealthCheckEnabled: true
+      HealthCheckPath: /
+      HealthCheckIntervalSeconds: 30
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Matcher:
+        HttpCode: 200-399
+
+  # ==================== Listener ====================
+  HTTPListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+  # ==================== ECS Service ====================
+  ECSService:
+    Type: AWS::ECS::Service
+    DependsOn: HTTPListener
+    Properties:
+      ServiceName: !Sub "${ProjectName}-${Environment}-service"
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref TaskDefinition
+      DesiredCount: !Ref DesiredCount
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !ImportValue 
+                Fn::Sub: "${ProjectName}-${Environment}-ECSSG"
+          Subnets:
+            - !ImportValue 
+                Fn::Sub: "${ProjectName}-${Environment}-PublicSubnet1"
+            - !ImportValue 
+                Fn::Sub: "${ProjectName}-${Environment}-PublicSubnet2"
+      LoadBalancers:
+        - ContainerName: app
+          ContainerPort: !Ref ContainerPort
+          TargetGroupArn: !Ref TargetGroup
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 50
+      HealthCheckGracePeriodSeconds: 60
+
+Outputs:
+  ALBDNSName:
+    Description: DNS name of the Application Load Balancer
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-ALBDNS"
+
+  ECSClusterName:
+    Value: !Ref ECSCluster
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-ECSCluster"
+
+  ECSServiceName:
+    Value: !Ref ECSService
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-ECSService"
+
+  TargetGroupArn:
+    Value: !Ref TargetGroup
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-TargetGroup"

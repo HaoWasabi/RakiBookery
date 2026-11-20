@@ -1,0 +1,259 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  RakiBookery - Compute Stack (Cost Optimized)
+  - 1 AZ only
+  - No ALB
+  - Fargate Spot preferred
+  - Sử dụng Secrets Manager có sẵn
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: rakibookery
+
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues: [dev, staging, prod]
+
+  ContainerPort:
+    Type: Number
+    Default: 80
+
+  DesiredCount:
+    Type: Number
+    Default: 1
+    MinValue: 1
+    MaxValue: 2
+
+  Cpu:
+    Type: String
+    Default: "256"
+    AllowedValues: ["256", "512"]
+
+  Memory:
+    Type: String
+    Default: "512"
+    AllowedValues: ["512", "1024"]
+
+  ImageTag:
+    Type: String
+    Default: latest
+
+Resources:
+
+  # ==================== Security Group ====================
+  AppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow public access to the application (no ALB)
+      GroupName: !Sub "${ProjectName}-${Environment}-app-sg"
+      VpcId:
+        Fn::ImportValue: !Sub "${ProjectName}-${Environment}-VPCId"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: !Ref ContainerPort
+          ToPort: !Ref ContainerPort
+          CidrIp: 0.0.0.0/0
+          Description: Allow HTTP from Internet
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-${Environment}-app-sg"
+
+  # ==================== IAM Roles ====================
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-${Environment}-ecs-execution-role"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: SecretsManagerAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  Fn::ImportValue: !Sub "${ProjectName}-${Environment}-DBSecretArn"
+
+  ECSTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-${Environment}-ecs-task-role"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AppS3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:aws:s3:::${ProjectName}-${Environment}-*"
+                  - !Sub "arn:aws:s3:::${ProjectName}-${Environment}-*/*"
+
+  # ==================== ECS Cluster ====================
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub "${ProjectName}-${Environment}-cluster"
+      CapacityProviders:
+        - FARGATE
+        - FARGATE_SPOT
+      DefaultCapacityProviderStrategy:
+        - CapacityProvider: FARGATE_SPOT
+          Weight: 4
+        - CapacityProvider: FARGATE
+          Weight: 1
+      ClusterSettings:
+        - Name: containerInsights
+          Value: disabled
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-${Environment}-cluster"
+
+  # ==================== CloudWatch Log Group ====================
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/ecs/${ProjectName}-${Environment}"
+      RetentionInDays: 7
+
+  # ==================== Task Definition ====================
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub "${ProjectName}-${Environment}-app"
+      RequiresCompatibilities:
+        - FARGATE
+      NetworkMode: awsvpc
+      Cpu: !Ref Cpu
+      Memory: !Ref Memory
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt ECSTaskRole.Arn
+      RuntimePlatform:
+        CpuArchitecture: X86_64
+        OperatingSystemFamily: LINUX
+      ContainerDefinitions:
+        - Name: app
+          Image: !Sub
+            - "${ECRUri}:${ImageTag}"
+            - ECRUri:
+                Fn::ImportValue: !Sub "${ProjectName}-${Environment}-ECRUri"
+          PortMappings:
+            - ContainerPort: !Ref ContainerPort
+              Protocol: tcp
+          Essential: true
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: app
+
+          # Biến môi trường thông thường
+          Environment:
+            - Name: APP_ENV
+              Value: !Ref Environment
+            - Name: DB_HOST
+              Value: "rakibookery-db-instance.cvmciswssrkg.ap-southeast-1.rds.amazonaws.com"
+            - Name: DB_PORT
+              Value: "3306"
+            - Name: DB_NAME
+              Value: bookstoredb
+
+          # Lấy username + password từ Secrets Manager đã tạo sẵn
+          Secrets:
+            - Name: DB_USERNAME
+              ValueFrom:
+                Fn::Sub:
+                  - "${SecretArn}:username::"
+                  - SecretArn:
+                      Fn::ImportValue:
+                        Fn::Sub: "${ProjectName}-${Environment}-DBSecretArn"
+            - Name: DB_PASSWORD
+              ValueFrom:
+                Fn::Sub:
+                  - "${SecretArn}:password::"
+                  - SecretArn:
+                      Fn::ImportValue:
+                        Fn::Sub: "${ProjectName}-${Environment}-DBSecretArn"
+
+  # ==================== ECS Service ====================
+  ECSService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: !Sub "${ProjectName}-${Environment}-service"
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref TaskDefinition
+      DesiredCount: !Ref DesiredCount
+      CapacityProviderStrategy:
+        - CapacityProvider: FARGATE_SPOT
+          Weight: 4
+          Base: 0
+        - CapacityProvider: FARGATE
+          Weight: 1
+          Base: 0
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref AppSecurityGroup
+          Subnets:
+            - Fn::ImportValue: !Sub "${ProjectName}-${Environment}-PublicSubnet1"
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 0
+      SchedulingStrategy: REPLICA
+      EnableExecuteCommand: false
+      PropagateTags: SERVICE
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-${Environment}-service"
+
+Outputs:
+  ECSClusterName:
+    Description: ECS Cluster Name
+    Value: !Ref ECSCluster
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-ECSCluster"
+
+  ECSServiceName:
+    Description: ECS Service Name
+    Value: !GetAtt ECSService.Name
+    Export:
+      Name: !Sub "${ProjectName}-${Environment}-ECSService"
+
+  AppSecurityGroupId:
+    Value: !Ref AppSecurityGroup
+
+  HowToGetPublicIP:
+    Description: Lệnh lấy Public IP của task
+    Value: !Sub |
+      aws ecs list-tasks --cluster ${ECSCluster} --service-name ${ECSService} --region ${AWS::Region} --query 'taskArns[0]' --output text | \
+      xargs -I {} aws ecs describe-tasks --cluster ${ECSCluster} --tasks {} --region ${AWS::Region} \
+      --query 'tasks[0].attachments[0].details[?name==`networkInterfaceId`].value' --output text | \
+      xargs -I {} aws ec2 describe-network-interfaces --network-interface-ids {} --region ${AWS::Region} \
+      --query 'NetworkInterfaces[0].Association.PublicIp' --output text
