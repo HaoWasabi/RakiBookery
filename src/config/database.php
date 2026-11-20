@@ -12,8 +12,8 @@ class Database
     {
         $this->host     = env('DB_HOST', 'localhost');
         $this->dbname   = env('DB_NAME', 'bookstoredb');
-        $this->username = env('DB_USER', 'root');
-        $this->password = env('DB_PASS', '');
+        $this->username = env('DB_USERNAME', 'root');
+        $this->password = env('DB_PASSWORD', '');
 
         $this->conn = null;
         try {
