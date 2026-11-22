@@ -146,7 +146,7 @@ elseif ($requestUri === "/api/chat" && $_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    $lambdaUrl = 'https://seekbgxzy8.execute-api.ap-southeast-1.amazonaws.com/dev/chat';
+    $lambdaUrl = env('AI_API_URL', '');
     $payload   = json_encode(['body' => json_encode(['prompt' => $prompt, 'history' => $history])]);
 
     $ch = curl_init($lambdaUrl);

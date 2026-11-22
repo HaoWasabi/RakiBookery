@@ -7,6 +7,7 @@ require_once ROOT_PATH . '/app/models/Address.php';
 require_once ROOT_PATH . '/app/models/OrderDetail.php';
 require_once ROOT_PATH . '/app/models/Promo.php';
 require_once ROOT_PATH . '/app/models/PaymentMethod.php';
+require_once ROOT_PATH . '/app/services/SnsService.php';
 
 class PayPalController extends BaseController
 {
@@ -15,6 +16,7 @@ class PayPalController extends BaseController
     private $orderDetailModel;
     private $promoModel;
     private $paymentMethodModel;
+    private $snsService;
 
     public function __construct()
     {
@@ -23,6 +25,7 @@ class PayPalController extends BaseController
         $this->orderDetailModel = new OrderDetail();
         $this->promoModel       = new Promo();
         $this->paymentMethodModel = new PaymentMethod();
+        $this->snsService       = new SnsService();
     }
 
     // -----------------------------------------------------------------------
@@ -311,6 +314,9 @@ class PayPalController extends BaseController
 
             // Cập nhật trạng thái đơn hàng sang 'processing' vì đã thanh toán
             $this->orderModel->updateOrderStatus($orderId, 'processing');
+
+            // Thông báo SNS cho admin
+            $this->snsService->notifyNewOrder($orderId, $checkout['totalAmount'], 'PayPal');
 
             // Xóa giỏ hàng và session checkout
             unset($_SESSION['cart']);

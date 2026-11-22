@@ -5,6 +5,7 @@ require_once __DIR__ . '/../models/PaymentMethod.php';
 require_once __DIR__ . '/../models/OrderDetail.php';
 require_once __DIR__ . '/../models/Promo.php';
 require_once __DIR__ . '/BaseController.php';
+require_once __DIR__ . '/../services/SnsService.php';
 
 class OrderController extends BaseController
 {
@@ -13,6 +14,7 @@ class OrderController extends BaseController
     private $paymentMethodModel;
     private $orderDetailModel;
     private $promoModel;
+    private $snsService;
 
     public function __construct()
     {
@@ -21,6 +23,7 @@ class OrderController extends BaseController
         $this->paymentMethodModel = new PaymentMethod();
         $this->orderDetailModel = new OrderDetail();
         $this->promoModel = new Promo();
+        $this->snsService = new SnsService();
     }
 
     // Hiển thị danh sách đơn hàng
@@ -50,6 +53,9 @@ class OrderController extends BaseController
         $result = $this->orderModel->updateOrderStatus($orderId, $status);
 
         if ($result) {
+            // Thông báo SNS khi admin cập nhật trạng thái đơn hàng
+            $this->snsService->notifyStatusChanged($orderId, $status);
+
             $this->responseJson([
                 'success' => true,
                 'message' => 'Cập nhật trạng thái đơn hàng thành công'
@@ -170,6 +176,9 @@ class OrderController extends BaseController
         foreach ($_SESSION['cart'] as $item) {
             $this->orderDetailModel->createOrderDetail($orderId, $item['product_id'], $item['quantity'], $item['price']);
         }
+
+        // Gửi thông báo SNS cho admin
+        $this->snsService->notifyNewOrder($orderId, $totalAmount, 'COD');
 
         // Xóa giỏ hàng sau khi đặt hàng thành công
         unset($_SESSION['cart']);
