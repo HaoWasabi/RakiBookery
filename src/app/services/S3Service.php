@@ -1,6 +1,23 @@
 <?php
 
-require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
+// BASE_PATH được define trong public/index.php (entry point duy nhất).
+// Fallback tự tính khi file được include trực tiếp (vd: script CLI).
+if (!defined('BASE_PATH')) {
+    // Local:  src/app/services → lên 3 cấp = RakiBookery/
+    // Docker: html/app/services → lên 2 cấp = /var/www/html/
+    // Thử cả hai, dùng cái nào có vendor/autoload.php
+    $candidates = [
+        dirname(__DIR__, 3) . '/vendor/autoload.php',
+        dirname(__DIR__, 2) . '/vendor/autoload.php',
+    ];
+    foreach ($candidates as $candidate) {
+        if (file_exists($candidate)) {
+            define('BASE_PATH', dirname($candidate));
+            break;
+        }
+    }
+}
+require_once BASE_PATH . '/vendor/autoload.php';
 
 use Aws\S3\S3Client;
 use Aws\Exception\AwsException;
