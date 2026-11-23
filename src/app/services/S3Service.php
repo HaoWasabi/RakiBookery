@@ -1,23 +1,31 @@
 <?php
 
-// BASE_PATH được define trong public/index.php (entry point duy nhất).
-// Fallback tự tính khi file được include trực tiếp (vd: script CLI).
+// Định nghĩa BASE_PATH an toàn cho cả Local và Docker Container (/var/www/html)
 if (!defined('BASE_PATH')) {
-    // Local:  src/app/services → lên 3 cấp = RakiBookery/
-    // Docker: html/app/services → lên 2 cấp = /var/www/html/
-    // Thử cả hai, dùng cái nào có vendor/autoload.php
-    $candidates = [
-        dirname(__DIR__, 3) . '/vendor/autoload.php',
-        dirname(__DIR__, 2) . '/vendor/autoload.php',
-    ];
-    foreach ($candidates as $candidate) {
-        if (file_exists($candidate)) {
-            define('BASE_PATH', dirname($candidate));
-            break;
+    
+    $autoloadPath = __DIR__ . '/../../vendor/autoload.php';
+    
+    if (file_exists($autoloadPath)) {
+        define('BASE_PATH', dirname($autoloadPath));
+    } else {
+        // 2. Fallback duyệt ngược cây thư mục lên tới 4 cấp để tìm vendor/autoload.php
+        $dir = __DIR__;
+        while ($dir !== dirname($dir)) {
+            if (file_exists($dir . '/vendor/autoload.php')) {
+                define('BASE_PATH', $dir);
+                break;
+            }
+            $dir = dirname($dir);
         }
     }
 }
-require_once BASE_PATH . '/vendor/autoload.php';
+
+// Kiểm tra và nhúng autoloader của Composer
+if (defined('BASE_PATH') && file_exists(BASE_PATH . '/vendor/autoload.php')) {
+    require_once BASE_PATH . '/vendor/autoload.php';
+} else {
+    error_log('[ERROR] S3Service: Không tìm thấy file vendor/autoload.php tại BASE_PATH: ' . (defined('BASE_PATH') ? BASE_PATH : 'undefined'));
+}
 
 use Aws\S3\S3Client;
 use Aws\Exception\AwsException;
@@ -42,51 +50,54 @@ class S3Service
                 'key'    => env('AWS_ACCESS_KEY_ID', ''),
                 'secret' => env('AWS_SECRET_ACCESS_KEY', ''),
             ],
-            // Dùng virtual-hosted-style URL (mặc định AWS SDK v3).
-            // Đặt tường minh để tránh path-style bị deprecated theo AWS policy.
+            // Sử dụng Virtual-hosted-style URL (chuẩn khuyến nghị của AWS SDK v3)
             'use_path_style_endpoint' => false,
         ]);
     }
 
     /**
-     * Upload một file ảnh lên S3, đặt tên file theo BookID.
-     * Key sẽ là: <folder>/<bookId>.<ext>  (ví dụ: media/44.jpg)
-     * Nếu $bookId null, dùng uniqid() như cũ.
+     * Upload một file ảnh lên S3, đặt tên file theo BookID nếu có.
+     * Key sẽ có dạng: <folder>/<bookId>.<ext> (ví dụ: uploads/44.jpg)
      *
-     * @param array    $file    Phần tử từ $_FILES
-     * @param int|null $bookId  BookID để đặt tên file
+     * @param array    $file    Phần tử lấy từ $_FILES
+     * @param int|null $bookId  BookID dùng để đặt tên file
      * @return string|false     Public URL trên S3, hoặc false nếu thất bại
      */
     public function uploadImage(array $file, ?int $bookId = null): string|false
     {
-        // Validate: phải là ảnh thật
+        // Validate: Kiểm tra định dạng ảnh thật
         if (getimagesize($file['tmp_name']) === false) {
             return false;
         }
 
-        // Validate: tối đa 5MB
+        // Validate: Dung lượng tối đa 5MB
         if ($file['size'] > 5 * 1024 * 1024) {
             return false;
         }
 
-        // Validate: chỉ cho phép các định dạng ảnh phổ biến
+        // Validate: Chỉ cho phép các định dạng ảnh hợp lệ
         $allowedTypes = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         if (!in_array($ext, $allowedTypes)) {
             return false;
         }
 
-        // Đặt tên file theo BookID nếu có, không thì dùng uniqid
-        $filename = ($bookId !== null) ? "{$bookId}.{$ext}" : uniqid() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', basename($file['name']));
+        // Đặt tên file theo BookID nếu có, hoặc tạo tên ngẫu nhiên uniqid
+        $filename = ($bookId !== null) 
+            ? "{$bookId}.{$ext}" 
+            : uniqid() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', basename($file['name']));
         $key = $this->folder . '/' . $filename;
 
-        // Nếu đặt tên theo BookID: xóa file cũ cùng key (mọi extension) trước khi upload
+        // Nếu đặt tên theo BookID: Xóa các file cũ cùng BookID khác extension trên S3
         if ($bookId !== null) {
             foreach ($allowedTypes as $oldExt) {
                 $oldKey = $this->folder . '/' . $bookId . '.' . $oldExt;
                 if ($oldKey !== $key) {
                     try {
-                        $this->client->deleteObject(['Bucket' => $this->bucket, 'Key' => $oldKey]);
+                        $this->client->deleteObject([
+                            'Bucket' => $this->bucket, 
+                            'Key'    => $oldKey
+                        ]);
                     } catch (\Exception $e) {
                         // Bỏ qua nếu file cũ không tồn tại
                     }
@@ -113,17 +124,16 @@ class S3Service
     }
 
     /**
-     * Xóa một object khỏi S3 theo URL đầy đủ.
-     * Dùng khi thay ảnh cũ bằng ảnh mới để tránh file rác trên bucket.
+     * Xóa một object khỏi S3 dựa theo URL đầy đủ.
      *
-     * @param string $url  URL đầy đủ của ảnh cũ (vd: https://bucket.s3.region.amazonaws.com/uploads/xxx.jpg)
+     * @param string $url  URL đầy đủ (vd: https://bucket.s3.region.amazonaws.com/uploads/xxx.jpg)
      * @return bool
      */
     public function deleteByUrl(string $url): bool
     {
         $prefix = "https://{$this->bucket}.s3.{$this->region}.amazonaws.com/";
         if (!str_starts_with($url, $prefix)) {
-            return false; // URL không thuộc bucket này (ví dụ ảnh default hoặc URL local cũ)
+            return false;
         }
 
         $key = substr($url, strlen($prefix));
@@ -141,11 +151,10 @@ class S3Service
     }
 
     /**
-     * Tạo presigned URL để browser có thể đọc ảnh từ private bucket.
-     * URL có hiệu lực trong $expiresIn giây (mặc định 1 giờ).
+     * Tạo presigned URL cho phép truy cập tạm thời vào object trong Private Bucket.
      *
-     * @param string $key     Object key trong bucket (ví dụ: media/abc_img.jpg)
-     * @param int    $expiresIn Thời gian hiệu lực tính bằng giây
+     * @param string $key        Key của object trong bucket
+     * @param int    $expiresIn  Thời gian hết hạn (tính bằng giây, mặc định 1 giờ)
      * @return string
      */
     public function getPresignedUrl(string $key, int $expiresIn = 3600): string
@@ -160,10 +169,9 @@ class S3Service
     }
 
     /**
-     * Từ URL đầy đủ của S3 object, trích ra key rồi tạo presigned URL.
-     * Trả về null nếu URL không thuộc bucket này.
+     * Trích xuất key từ URL S3 đầy đủ và tạo presigned URL.
      *
-     * @param string $url  URL dạng https://<bucket>.s3.<region>.amazonaws.com/<key>
+     * @param string $url
      * @return string|null
      */
     public function presignFromUrl(string $url): ?string
@@ -172,12 +180,13 @@ class S3Service
         if (!str_starts_with($url, $prefix)) {
             return null;
         }
-        $key = substr($url, strlen($prefix));
-        // URL có thể dùng '+' để encode space (application/x-www-form-urlencoded).
-        // AWS SDK cần key thật (không encoded), nên decode trước khi presign.
-        $key = urldecode($key);
+        $key = urldecode(substr($url, strlen($prefix)));
         return $this->getPresignedUrl($key);
     }
+
+    /**
+     * Đoán MIME Type từ định dạng đuôi file.
+     */
     private function guessMimeType(string $ext): string
     {
         return match (strtolower($ext)) {
