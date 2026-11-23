@@ -35,9 +35,10 @@
 
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="/assets/admin/css/navbar.css">
-    <link rel="stylesheet" href="/assets/admin/css/sidebar.css">
-    <link rel="stylesheet" href="/assets/admin/css/style.css">
+    <?php $cdn = rtrim(env('CDN_URL', ''), '/'); ?>
+    <link rel="stylesheet" href="<?= $cdn ?>/assets/admin/css/navbar.css">
+    <link rel="stylesheet" href="<?= $cdn ?>/assets/admin/css/sidebar.css">
+    <link rel="stylesheet" href="<?= $cdn ?>/assets/admin/css/style.css">
 </head>
 
 <body>
@@ -75,8 +76,8 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.0.19/dist/sweetalert2.all.min.js"></script>
 
     <!-- Custom JS -->
-    <script src="/assets/admin/js/sidebar.js"></script>
-    <script src="/assets/admin/js/main.js"></script>
+    <script src="<?= $cdn ?>/assets/admin/js/sidebar.js"></script>
+    <script src="<?= $cdn ?>/assets/admin/js/main.js"></script>
 </body>
 
 </html>

@@ -47,9 +47,13 @@
 <link rel="stylesheet" href="https://site-assets.fontawesome.com/releases/v6.7.2/css/duotone-light.css"> -->
 
 <!-- Custom CSS -->
-<link rel="stylesheet" href="../../assets/client/css/style.css" />
-<link rel="stylesheet" href="../../assets/client/css/cart-offcanvas.css" />
-<link rel="stylesheet" href="../../assets/client/css/chat-bubble.css" />
+<?php
+$cdn = rtrim(env('CDN_URL', ''), '/');
+$assetBase = $cdn !== '' ? $cdn : '../..';
+?>
+<link rel="stylesheet" href="<?= $assetBase ?>/assets/client/css/style.css" />
+<link rel="stylesheet" href="<?= $assetBase ?>/assets/client/css/cart-offcanvas.css" />
+<link rel="stylesheet" href="<?= $assetBase ?>/assets/client/css/chat-bubble.css" />
 
 <!-- jQuery -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -76,11 +80,11 @@
 <script src="https://cdn.jsdelivr.net/npm/autonumeric@4.10.8"></script>
 
 <!-- Custom JS files -->
-<script type="module" src="../../assets/client/js/main.js"></script>
+<script type="module" src="<?= $assetBase ?>/assets/client/js/main.js"></script>
 
 <!-- < ?php if (!isset($_SESSION['UserID'])): ?> -->
-<script type="module" src="../../assets/client/js/auth.js"></script>
-<link rel="stylesheet" href="../../assets/client/css/auth-modal.css" />
+<script type="module" src="<?= $assetBase ?>/assets/client/js/auth.js"></script>
+<link rel="stylesheet" href="<?= $assetBase ?>/assets/client/css/auth-modal.css" />
 <!-- < ?php endif; ?> -->
 
 <script>
@@ -89,4 +93,4 @@
 </script>
 
 <!-- Chat Bubble JS (defer để DOM đã sẵn sàng) -->
-<script src="../../assets/client/js/chat-bubble.js" defer></script>
+<script src="<?= $assetBase ?>/assets/client/js/chat-bubble.js" defer></script>
