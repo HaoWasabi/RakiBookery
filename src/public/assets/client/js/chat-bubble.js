@@ -6,7 +6,7 @@
 (function () {
     'use strict';
 
-    const API_ENDPOINT = 'https://vikx03c3me.execute-api.ap-southeast-1.amazonaws.com/dev/chat';
+    const API_ENDPOINT = '/api/chat';
 
     // ─── State ────────────────────────────────────────────────────────────────
     let isOpen = false;

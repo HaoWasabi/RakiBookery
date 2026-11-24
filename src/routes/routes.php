@@ -147,7 +147,7 @@ elseif ($requestUri === "/api/chat" && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $lambdaUrl = env('AI_API_URL', '');
-    $payload   = json_encode(['body' => json_encode(['prompt' => $prompt, 'history' => $history])]);
+    $payload = json_encode(['prompt' => $prompt, 'history' => $history]);
 
     $ch = curl_init($lambdaUrl);
     curl_setopt_array($ch, [
