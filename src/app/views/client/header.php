@@ -39,7 +39,7 @@
             <!-- Logo -->
             <div class="logo me-3">
                 <a href="/">
-                    <img src="/img/logo.JPG" alt="RakiBookery Logo" class="img-fluid">
+                    <img src="/img/logo.jpg" alt="RakiBookery Logo" class="img-fluid">
                 </a>
             </div>
 
