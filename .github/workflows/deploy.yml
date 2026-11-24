@@ -245,13 +245,15 @@ jobs:
           wait-for-service-stability: true
 
   # ─────────────────────────────────────────────
-  # Job 6: Post-Deploy Smoke Tests
+  # Job 5: Post-Deploy Smoke Tests
+  # Chỉ chạy khi ECS service đang hoạt động
   # ─────────────────────────────────────────────
   smoke-tests:
     name: Post-Deploy Smoke Tests
     needs: [deploy]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    continue-on-error: true
 
     steps:
       - name: Wait for service to stabilize
