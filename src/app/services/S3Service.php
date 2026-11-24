@@ -27,6 +27,7 @@ if (defined('BASE_PATH') && file_exists(BASE_PATH . '/vendor/autoload.php')) {
     error_log('[ERROR] S3Service: Không tìm thấy file vendor/autoload.php tại BASE_PATH: ' . (defined('BASE_PATH') ? BASE_PATH : 'undefined'));
 }
 
+
 use Aws\S3\S3Client;
 use Aws\Exception\AwsException;
 
