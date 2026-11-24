@@ -8,11 +8,11 @@ ini_set('session.gc_divisor', 100);
 
 session_set_cookie_params([
     'lifetime' => $lifetime,
-    'path' => '/',
-    'domain' => '',
-    'secure' => false,
+    'path'     => '/',
+    'domain'   => '',
+    'secure'   => env('APP_HTTPS', false),  // true khi chạy sau HTTPS (load balancer, CloudFront)
     'httponly' => true,
-    'samesite' => 'Lax'
+    'samesite' => 'Lax',
 ]);
 
 if (session_status() === PHP_SESSION_NONE) {

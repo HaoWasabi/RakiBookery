@@ -17,7 +17,8 @@ RUN apt-get update \
 # Lấy composer từ image chính thức
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-WORKDIR /var/www/html
+# Đặt WORKDIR tại /var/www để vendor nằm đúng gốc /var/www/vendor
+WORKDIR /var/www
 
 # Copy file quản lý gói trước để tận dụng cache Docker
 COPY composer.json composer.lock* ./
@@ -38,16 +39,18 @@ RUN apt-get update \
 # Copy cấu hình Apache
 COPY docker/apache/000-default.conf /etc/apache2/sites-available/000-default.conf
 
-# Copy thư mục vendor và source code từ builder
-COPY --from=builder /var/www/html/vendor /var/www/html/vendor
+# 1. Copy thư mục vendor vào /var/www/vendor (Đã khớp với BASE_PATH: /var/www trong log)
+COPY --from=builder /var/www/vendor /var/www/vendor
+
+# 2. Copy toàn bộ mã nguồn vào /var/www/html/ (hoặc từ src/ nếu project để code trong src/)
 COPY src/ /var/www/html/
 
-# Tạo user non-root bảo mật
-RUN groupadd -r appuser && useradd -r -g appuser appuser \
-    && chown -R appuser:appuser /var/www/html \
+# Phân quyền cho www-data (user mặc định của Apache)
+RUN chown -R www-data:www-data /var/www/html \
+    && mkdir -p /var/www/html/public/uploads \
     && chmod -R 775 /var/www/html/public/uploads
 
-WORKDIR /var/www/html/public
+WORKDIR /var/www/html
 
 EXPOSE 80
 

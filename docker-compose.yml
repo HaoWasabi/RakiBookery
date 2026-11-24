@@ -1,0 +1,51 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: rakibookery-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: bookstoredb
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./bookstoredb.sql:/docker-entrypoint-initdb.d/bookstoredb.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: rakibookery-app
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    env_file: .env
+    environment:
+      # Database — ghi đè giá trị local trong .env
+      DB_HOST: db
+      DB_NAME: bookstoredb
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      # Debug — tắt khi chạy production, bật khi dev
+      APP_DEBUG: "false"
+      # HTTPS — bật nếu container đứng sau load balancer / CloudFront HTTPS
+      APP_HTTPS: "false"
+      # Các biến AWS, PayPal, Notify, AI được nạp từ env_file (.env)
+      # Khai báo tường minh ở đây nếu muốn ghi đè giá trị trong .env:
+      # AWS_REGION: ap-southeast-1
+      # AWS_BUCKET: rakibookery-prod-media-xxxxxxxx
+      # AWS_S3_FOLDER: media
+      # PAYPAL_MODE: sandbox
+      # NOTIFY_API_URL: ""
+      # AI_API_URL: ""
+    volumes:
+      - uploads_data:/var/www/html/public/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db_data:
+  uploads_data:
