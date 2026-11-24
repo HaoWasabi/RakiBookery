@@ -7,11 +7,11 @@ on:
 
 env:
   AWS_REGION: ap-southeast-1
-  ECR_REPOSITORY: rakibookery/php-app     # Tên ECR Repository
-  ECS_CLUSTER: raki-ecs-cluster           # Tên ECS Cluster
-  ECS_SERVICE: raki-ecs-service           # Tên ECS Service
-  ECS_TASK_DEFINITION: raki-ecs-task      # Tên Task Definition family
-  CONTAINER_NAME: php-app                 # Tên container trong Task Definition
+  ECR_REPOSITORY: rakibookery/php-app             # Tên ECR Repository
+  ECS_CLUSTER: rakibookery-prod-cluster           # Tên ECS Cluster
+  ECS_SERVICE: rakibookery-prod-service           # Tên ECS Service
+  ECS_TASK_DEFINITION: rakibookery-prod-app       # Tên Task Definition family
+  CONTAINER_NAME: php-app                         # Tên container trong Task Definition
 
 jobs:
   build-and-push:
