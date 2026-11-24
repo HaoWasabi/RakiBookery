@@ -90,7 +90,11 @@ $assetBase = $cdn !== '' ? $cdn : '../..';
 <script>
     let bestSellerBooks = <?php echo json_encode($bestSellerBooks); ?>;
     let allBooks = <?php echo json_encode($books); ?>;
-    window.RAKI_CHAT_API = '/api/chat';
+    window.RAKI_CHAT_API = <?php echo json_encode(
+        env('APP_ENV', 'production') === 'local'
+            ? '/api/chat'
+            : env('AI_API_URL', '')
+    ); ?>;
 </script>
 
 <!-- Chat Bubble JS (defer để DOM đã sẵn sàng) -->
