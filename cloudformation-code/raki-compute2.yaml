@@ -183,6 +183,9 @@ Resources:
               Value: "3306"
             - Name: DB_NAME
               Value: bookstoredb
+            - Name: NOTIFY_API_URL
+              Value:
+                Fn::ImportValue: !Sub "${ProjectName}-${Environment}-NotifyApiUrl"
 
           # Lấy username + password từ Secrets Manager đã tạo sẵn
           Secrets:

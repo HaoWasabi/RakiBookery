@@ -13,6 +13,21 @@ loadEnv(BASE_PATH . '/.env');
 error_reporting(E_ALL);
 ini_set('display_errors', env('APP_DEBUG', false) ? 1 : 0);
 
+// Hiển thị lỗi chi tiết chỉ ở môi trường dev, ẩn ở prod/staging
+$appEnv = env('APP_ENV', 'prod');
+if ($appEnv === 'dev') {
+    error_reporting(E_ALL);
+    ini_set('display_errors', 1);
+} else {
+    error_reporting(E_ALL);
+    ini_set('display_errors', 0);  // Ẩn lỗi với người dùng, nhưng vẫn báo qua SNS
+    ini_set('log_errors', 1);
+}
+
+// Global error/exception handler → gửi SNS khi có lỗi hệ thống nghiêm trọng
+// (phải load sau env vì handler cần hàm env())
+require_once "../config/error_handler.php";
+
 // Khởi tạo session
 require_once "../config/session.php";
 

@@ -76,6 +76,27 @@ class SnsService
     }
 
     /**
+     * Gửi cảnh báo khi có lỗi hệ thống nghiêm trọng (PHP exception, fatal error, DB lỗi).
+     * Thường được gọi từ global error handler (config/error_handler.php).
+     *
+     * @param string $errorType  Loại lỗi (e.g. "Uncaught Exception", "PHP Fatal", "DB Error")
+     * @param string $detail     Nội dung chi tiết (message + file + line + trace)
+     * @param string $env        Môi trường (prod/staging/dev)
+     */
+    public function notifySystemError(string $errorType, string $detail, string $env = 'prod'): void
+    {
+        $this->publish(
+            subject: "[RakiBookery][{$env}] 🔴 {$errorType}",
+            message: "CẢNH BÁO: Phát hiện lỗi hệ thống trên RakiBookery.\n\n"
+                   . "Loại lỗi  : {$errorType}\n"
+                   . "Môi trường: {$env}\n"
+                   . "Thời gian : " . date('d/m/Y H:i:s') . "\n\n"
+                   . "--- Chi tiết ---\n"
+                   . $detail
+        );
+    }
+
+    /**
      * POST lên API Gateway endpoint → Lambda → SNS.
      * Silent-fail: nếu chưa cấu hình hoặc gọi lỗi, chỉ ghi error_log.
      *
