@@ -115,6 +115,10 @@ class Book
     // Thống kê sách bán chạy nhất kèm số lượt bán
     public function getTopBestSellingBooks($limit = 5)
     {
+        if ($this->conn === null) {
+            error_log("getTopBestSellingBooks: DB connection is null");
+            return [];
+        }
         try {
             $query = "
             SELECT

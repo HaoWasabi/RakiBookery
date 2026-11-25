@@ -20,8 +20,6 @@ class ClientController extends BaseController
         $this->userModel      = new User();
         $this->orderModel     = new Order();
         $this->paymentMethodModel = new PaymentMethod();
-
-        $this->data['bestSellerBooks'] = $this->bookController->getTopBestSellingBooks(4);
     }
 
     public function index()
