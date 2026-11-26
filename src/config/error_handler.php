@@ -3,18 +3,14 @@
 /**
  * Global Error & Exception Handler cho RakiBookery
  *
- * Bắt các lỗi PHP chưa được xử lý (fatal errors, uncaught exceptions, E_ERROR)
- * rồi ghi log nội bộ. Việc alert admin được xử lý bởi CloudWatch Alarms
- * (đọc ECS logs → metric filter → SNS Topic) — không gửi SNS trực tiếp từ đây.
+ * Bắt các lỗi PHP chưa được xử lý (fatal errors, uncaught exceptions, E_ERROR),
+ * ghi log nội bộ và hiển thị trang lỗi thân thiện cho user.
  *
  * Cách hoạt động:
  *   1. set_exception_handler → bắt mọi Throwable chưa được catch
  *   2. set_error_handler     → bắt E_ERROR, E_WARNING, E_PARSE, ...
  *   3. register_shutdown_function → bắt fatal error (parse error, OOM, ...)
  *      vì fatal error không đi qua set_error_handler
- *
- * Alert hệ thống: CloudWatch Logs Metric Filter + Alarm → AdminAlertTopic (SNS)
- * (cấu hình trong cloudformation-code/raki-monitoring.yaml)
  *
  * Biến môi trường:
  *   APP_ENV — môi trường (prod/staging/dev)
@@ -24,7 +20,6 @@
 // 1. Uncaught Exception / Error handler
 // ─────────────────────────────────────────────────────────────
 set_exception_handler(function (Throwable $e): void {
-    // Log nội bộ → CloudWatch Logs đọc và alert qua Alarm nếu vượt ngưỡng
     $msg = sprintf(
         '[EXCEPTION] %s: %s in %s on line %d',
         get_class($e),
@@ -43,12 +38,10 @@ set_exception_handler(function (Throwable $e): void {
 // 2. PHP Error handler (E_WARNING, E_NOTICE, E_USER_ERROR, ...)
 // ─────────────────────────────────────────────────────────────
 set_error_handler(function (int $errno, string $errstr, string $errfile, int $errline): bool {
-    // Chỉ xử lý lỗi không bị tắt bởi @ operator
     if (!(error_reporting() & $errno)) {
         return false;
     }
 
-    // Log nội bộ → CloudWatch Logs đọc và alert qua Alarm nếu vượt ngưỡng
     error_log(sprintf(
         '[%s] %s in %s on line %d',
         _errorLevelName($errno),
@@ -75,7 +68,6 @@ register_shutdown_function(function (): void {
         return;
     }
 
-    // Log nội bộ → CloudWatch Logs đọc và alert qua Alarm nếu vượt ngưỡng
     error_log(sprintf(
         '[PHP Fatal] %s: %s in %s on line %d',
         _errorLevelName($error['type']),

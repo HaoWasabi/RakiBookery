@@ -2,7 +2,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: >
   RakiBookery - Monitoring Stack
   SNS Topic + Lambda (NotifyLambda) + API Gateway
-  Admin nhận email khi: có đơn hàng mới, cập nhật trạng thái đơn, lỗi hệ thống PHP.
+  Admin nhận email khi: có đơn hàng mới, cập nhật trạng thái đơn.
 
 # ══════════════════════════════════════════════════════════════
 # HƯỚNG DẪN DEPLOY:
@@ -241,55 +241,11 @@ Resources:
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub "arn:aws:apigateway:${AWS::Region}::/restapis/${NotifyApi}/stages/prod/POST/notify"
-  # ══════════════════════════════════════════════════════════════
-  # 5. CLOUDWATCH METRIC FILTER — đếm lỗi hệ thống từ ECS logs
-  #    Đọc log group ECS, tìm pattern lỗi, tạo custom metric
-  #    Log group được tạo bởi raki-compute.yaml / raki-compute2.yaml
-  # ══════════════════════════════════════════════════════════════
-  SystemErrorMetricFilter:
-    Type: AWS::Logs::MetricFilter
-    Properties:
-      LogGroupName: !Sub "/ecs/${ProjectName}-${Environment}"
-      FilterPattern: '?"[EXCEPTION]" ?"[PHP Fatal]" ?"PHP Fatal" ?"Uncaught" ?"E_ERROR" ?"E_PARSE" ?"E_CORE_ERROR"'
-      MetricTransformations:
-        - MetricNamespace: !Sub "${ProjectName}/SystemErrors"
-          MetricName: ErrorCount
-          MetricValue: "1"
-          DefaultValue: 0
-
-  # ══════════════════════════════════════════════════════════════
-  # 6. CLOUDWATCH ALARM — alert khi lỗi hệ thống vượt ngưỡng
-  #    Reuse AdminAlertTopic đã có, không tạo SNS Topic mới
-  #    Ngưỡng: > 5 lỗi trong 5 phút → gửi email admin
-  # ══════════════════════════════════════════════════════════════
-  SystemErrorAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub "${ProjectName}-${Environment}-system-errors"
-      AlarmDescription: "Phát hiện lỗi hệ thống nghiêm trọng trên RakiBookery ECS (> 5 lỗi trong 5 phút)"
-      Namespace: !Sub "${ProjectName}/SystemErrors"
-      MetricName: ErrorCount
-      Statistic: Sum
-      Period: 300
-      EvaluationPeriods: 1
-      Threshold: 5
-      ComparisonOperator: GreaterThanThreshold
-      TreatMissingData: notBreaching
-      AlarmActions:
-        - !Ref AdminAlertTopic
-      OKActions:
-        - !Ref AdminAlertTopic
 
 # ══════════════════════════════════════════════════════════════
 # OUTPUTS
 # ══════════════════════════════════════════════════════════════
 Outputs:
-  AdminAlertTopicArn:
-    Description: "ARN của SNS Topic nhận cảnh báo admin"
-    Value: !Ref AdminAlertTopic
-    Export:
-      Name: !Sub "${ProjectName}-${Environment}-AlertTopicArn"
-
   NotifyLambdaArn:
     Description: "ARN của Lambda function NotifyLambda"
     Value: !GetAtt NotifyLambda.Arn
