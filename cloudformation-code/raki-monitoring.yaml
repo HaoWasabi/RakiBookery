@@ -1,9 +1,8 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >
   RakiBookery - Monitoring Stack
-  SNS Topic + Lambda (NotifyLambda) + API Gateway + CloudWatch Alarms
-  cho ECS Fargate, RDS MySQL, và Application Logs.
-  Admin nhận email khi: lỗi code PHP, container down, DB quá tải, log bất thường.
+  SNS Topic + Lambda (NotifyLambda) + API Gateway
+  Admin nhận email khi: có đơn hàng mới, cập nhật trạng thái đơn, lỗi hệ thống PHP.
 
 # ══════════════════════════════════════════════════════════════
 # HƯỚNG DẪN DEPLOY:
@@ -35,53 +34,6 @@ Parameters:
     Description: Email của admin nhận cảnh báo (bắt buộc điền)
     AllowedPattern: '^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$'
     ConstraintDescription: Phải là địa chỉ email hợp lệ
-
-  # Ngưỡng cảnh báo ECS
-  ECSCpuAlarmThreshold:
-    Type: Number
-    Default: 80
-    Description: "% CPU ECS vượt ngưỡng → gửi cảnh báo"
-
-  ECSMemoryAlarmThreshold:
-    Type: Number
-    Default: 85
-    Description: "% Memory ECS vượt ngưỡng → gửi cảnh báo"
-
-  # Ngưỡng cảnh báo RDS
-  RDSCpuAlarmThreshold:
-    Type: Number
-    Default: 80
-    Description: "% CPU RDS vượt ngưỡng → gửi cảnh báo"
-
-  RDSFreeStorageThreshold:
-    Type: Number
-    Default: 2000000000   # 2 GB (đơn vị bytes)
-    Description: "Dung lượng RDS còn lại thấp hơn ngưỡng → gửi cảnh báo"
-
-  RDSConnectionsThreshold:
-    Type: Number
-    Default: 50
-    Description: "Số DB connections vượt ngưỡng → gửi cảnh báo"
-
-  # Tên log group ECS (phải khớp với raki-compute2.yaml)
-  ECSLogGroupName:
-    Type: String
-    Default: /ecs/rakibookery-prod
-    Description: Tên CloudWatch Log Group của ECS container
-
-  # Tên ECS Cluster & Service (phải khớp với raki-compute2.yaml)
-  ECSClusterName:
-    Type: String
-    Default: rakibookery-prod-cluster
-
-  ECSServiceName:
-    Type: String
-    Default: rakibookery-prod-service
-
-  # Tên RDS instance (phải khớp với raki-foundation.yaml)
-  RDSInstanceIdentifier:
-    Type: String
-    Default: rakibookery-prod-mysql
 
 Resources:
 
@@ -133,13 +85,12 @@ Resources:
   # ══════════════════════════════════════════════════════════════
   # 3. LAMBDA FUNCTION — NotifyLambda
   #    Nhận request từ PHP App (qua API Gateway) và publish lên SNS
-  #    Cũng được gọi trực tiếp bởi CloudWatch Alarms
   # ══════════════════════════════════════════════════════════════
   NotifyLambda:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${ProjectName}-${Environment}-notify"
-      Description: "Publish notifications lên SNS từ PHP app (qua API Gateway) và CloudWatch Alarms"
+      Description: "Publish notifications lên SNS từ PHP app qua API Gateway"
       Runtime: python3.12
       Handler: index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
@@ -163,9 +114,8 @@ Resources:
 
           def handler(event, context):
               """
-              Xử lý 2 loại event:
-              1. HTTP request từ API Gateway (PHP app gọi trực tiếp)
-              2. CloudWatch Alarm event (từ SNS → Lambda)
+              Xử lý HTTP request từ API Gateway (PHP app gọi trực tiếp).
+              Body JSON: { "subject": "...", "message": "..." }
               """
               logger.info("Event: %s", json.dumps(event))
 
@@ -203,9 +153,9 @@ Resources:
 
 
           def extract_notification(event):
-              """Trích xuất subject và message từ nhiều loại event khác nhau."""
+              """Trích xuất subject và message từ event."""
 
-              # ── Loại 1: HTTP request từ API Gateway ─────────────────────
+              # ── HTTP request từ API Gateway ──────────────────────────────
               if 'body' in event:
                   body = event['body']
                   if isinstance(body, str):
@@ -217,35 +167,7 @@ Resources:
                   message = body.get('message', '')
                   return subject, message
 
-              # ── Loại 2: CloudWatch Alarm event (SNS → Lambda) ────────────
-              if 'Records' in event:
-                  for record in event['Records']:
-                      if record.get('EventSource') == 'aws:sns':
-                          sns_message = record['Sns']
-                          alarm_subject = sns_message.get('Subject', 'CloudWatch Alarm')
-                          alarm_body = sns_message.get('Message', '')
-                          # Thử parse alarm message JSON
-                          try:
-                              alarm_data = json.loads(alarm_body)
-                              alarm_name = alarm_data.get('AlarmName', '')
-                              alarm_desc = alarm_data.get('AlarmDescription', '')
-                              new_state = alarm_data.get('NewStateValue', '')
-                              reason = alarm_data.get('NewStateReason', '')
-                              metric = alarm_data.get('Trigger', {})
-                              message_text = (
-                                  f"CloudWatch Alarm: {alarm_name}\n\n"
-                                  f"Mô tả      : {alarm_desc}\n"
-                                  f"Trạng thái : {new_state}\n"
-                                  f"Lý do      : {reason}\n"
-                                  f"Metric     : {metric.get('MetricName','')} "
-                                  f"({metric.get('Namespace','')})\n"
-                                  f"Namespace  : {metric.get('Namespace','')}\n"
-                              )
-                              return alarm_subject, message_text
-                          except (json.JSONDecodeError, ValueError):
-                              return alarm_subject, alarm_body
-
-              # ── Loại 3: Direct Lambda invoke (test/manual) ───────────────
+              # ── Direct Lambda invoke (test/manual) ───────────────────────
               if 'subject' in event:
                   return event.get('subject', ''), event.get('message', '')
 
@@ -319,270 +241,6 @@ Resources:
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub "arn:aws:apigateway:${AWS::Region}::/restapis/${NotifyApi}/stages/prod/POST/notify"
-
-  # ══════════════════════════════════════════════════════════════
-  # 5. CLOUDWATCH LOG METRIC FILTERS — phát hiện lỗi trong log ECS
-  # ══════════════════════════════════════════════════════════════
-
-  # Filter bắt PHP Fatal Error trong log container
-  PHPFatalErrorFilter:
-    Type: AWS::Logs::MetricFilter
-    Properties:
-      LogGroupName: !Ref ECSLogGroupName
-      FilterName: !Sub "${ProjectName}-${Environment}-php-fatal"
-      FilterPattern: '"PHP Fatal error" OR "PHP Parse error" OR "Uncaught Exception" OR "Fatal error:"'
-      MetricTransformations:
-        - MetricName: PHPFatalErrorCount
-          MetricNamespace: !Sub "${ProjectName}/${Environment}/AppErrors"
-          MetricValue: '1'
-          DefaultValue: 0
-
-  # Filter bắt lỗi database trong log
-  DBErrorFilter:
-    Type: AWS::Logs::MetricFilter
-    Properties:
-      LogGroupName: !Ref ECSLogGroupName
-      FilterName: !Sub "${ProjectName}-${Environment}-db-error"
-      FilterPattern: '"Database error" OR "PDOException" OR "SQLSTATE" OR "Lỗi kết nối DB"'
-      MetricTransformations:
-        - MetricName: DBErrorCount
-          MetricNamespace: !Sub "${ProjectName}/${Environment}/AppErrors"
-          MetricValue: '1'
-          DefaultValue: 0
-
-  # Filter bắt lỗi HTTP 5xx trong Apache access log
-  HTTP5xxFilter:
-    Type: AWS::Logs::MetricFilter
-    Properties:
-      LogGroupName: !Ref ECSLogGroupName
-      FilterName: !Sub "${ProjectName}-${Environment}-http-5xx"
-      FilterPattern: '"HTTP/1.1\" 5" OR "HTTP/1.0\" 5" OR '" \"5"
-      MetricTransformations:
-        - MetricName: HTTP5xxCount
-          MetricNamespace: !Sub "${ProjectName}/${Environment}/AppErrors"
-          MetricValue: '1'
-          DefaultValue: 0
-
-  # ══════════════════════════════════════════════════════════════
-  # 6. CLOUDWATCH ALARMS — ECS Fargate
-  # ══════════════════════════════════════════════════════════════
-
-  # 6a. ECS CPU cao
-  ECSCPUAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub "${ProjectName}-${Environment}-ecs-cpu-high"
-      AlarmDescription: !Sub "ECS CPU vượt ${ECSCpuAlarmThreshold}% trong 5 phút liên tiếp"
-      Namespace: AWS/ECS
-      MetricName: CPUUtilization
-      Dimensions:
-        - Name: ClusterName
-          Value: !Ref ECSClusterName
-        - Name: ServiceName
-          Value: !Ref ECSServiceName
-      Statistic: Average
-      Period: 300
-      EvaluationPeriods: 2
-      Threshold: !Ref ECSCpuAlarmThreshold
-      ComparisonOperator: GreaterThanThreshold
-      TreatMissingData: notBreaching
-      AlarmActions:
-        - !Ref AdminAlertTopic
-      OKActions:
-        - !Ref AdminAlertTopic
-
-  # 6b. ECS Memory cao
-  ECSMemoryAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub "${ProjectName}-${Environment}-ecs-memory-high"
-      AlarmDescription: !Sub "ECS Memory vượt ${ECSMemoryAlarmThreshold}% trong 5 phút liên tiếp"
-      Namespace: AWS/ECS
-      MetricName: MemoryUtilization
-      Dimensions:
-        - Name: ClusterName
-          Value: !Ref ECSClusterName
-        - Name: ServiceName
-          Value: !Ref ECSServiceName
-      Statistic: Average
-      Period: 300
-      EvaluationPeriods: 2
-      Threshold: !Ref ECSMemoryAlarmThreshold
-      ComparisonOperator: GreaterThanThreshold
-      TreatMissingData: notBreaching
-      AlarmActions:
-        - !Ref AdminAlertTopic
-      OKActions:
-        - !Ref AdminAlertTopic
-
-  # 6c. ECS Task không chạy (service down)
-  ECSTaskCountAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub "${ProjectName}-${Environment}-ecs-no-tasks"
-      AlarmDescription: "ECS service không có task nào đang chạy — ứng dụng có thể đã down"
-      Namespace: ECS/ContainerInsights
-      MetricName: RunningTaskCount
-      Dimensions:
-        - Name: ClusterName
-          Value: !Ref ECSClusterName
-        - Name: ServiceName
-          Value: !Ref ECSServiceName
-      Statistic: Average
-      Period: 60
-      EvaluationPeriods: 3
-      Threshold: 1
-      ComparisonOperator: LessThanThreshold
-      TreatMissingData: breaching
-      AlarmActions:
-        - !Ref AdminAlertTopic
-      OKActions:
-        - !Ref AdminAlertTopic
-
-  # ══════════════════════════════════════════════════════════════
-  # 7. CLOUDWATCH ALARMS — RDS MySQL
-  # ══════════════════════════════════════════════════════════════
-
-  # 7a. RDS CPU cao
-  RDSCPUAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub "${ProjectName}-${Environment}-rds-cpu-high"
-      AlarmDescription: !Sub "RDS CPU vượt ${RDSCpuAlarmThreshold}% trong 10 phút"
-      Namespace: AWS/RDS
-      MetricName: CPUUtilization
-      Dimensions:
-        - Name: DBInstanceIdentifier
-          Value: !Ref RDSInstanceIdentifier
-      Statistic: Average
-      Period: 300
-      EvaluationPeriods: 2
-      Threshold: !Ref RDSCpuAlarmThreshold
-      ComparisonOperator: GreaterThanThreshold
-      TreatMissingData: notBreaching
-      AlarmActions:
-        - !Ref AdminAlertTopic
-      OKActions:
-        - !Ref AdminAlertTopic
-
-  # 7b. RDS dung lượng sắp hết
-  RDSStorageAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub "${ProjectName}-${Environment}-rds-storage-low"
-      AlarmDescription: "RDS dung lượng còn lại dưới 2GB — cần tăng storage"
-      Namespace: AWS/RDS
-      MetricName: FreeStorageSpace
-      Dimensions:
-        - Name: DBInstanceIdentifier
-          Value: !Ref RDSInstanceIdentifier
-      Statistic: Average
-      Period: 300
-      EvaluationPeriods: 1
-      Threshold: !Ref RDSFreeStorageThreshold
-      ComparisonOperator: LessThanThreshold
-      TreatMissingData: notBreaching
-      AlarmActions:
-        - !Ref AdminAlertTopic
-      OKActions:
-        - !Ref AdminAlertTopic
-
-  # 7c. RDS số kết nối cao (connection pool gần đầy)
-  RDSConnectionsAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub "${ProjectName}-${Environment}-rds-connections-high"
-      AlarmDescription: !Sub "RDS DatabaseConnections vượt ${RDSConnectionsThreshold} kết nối"
-      Namespace: AWS/RDS
-      MetricName: DatabaseConnections
-      Dimensions:
-        - Name: DBInstanceIdentifier
-          Value: !Ref RDSInstanceIdentifier
-      Statistic: Sum
-      Period: 300
-      EvaluationPeriods: 1
-      Threshold: !Ref RDSConnectionsThreshold
-      ComparisonOperator: GreaterThanThreshold
-      TreatMissingData: notBreaching
-      AlarmActions:
-        - !Ref AdminAlertTopic
-      OKActions:
-        - !Ref AdminAlertTopic
-
-  # 7d. RDS không phản hồi (FreeableMemory = 0 hoặc latency cao)
-  RDSReadLatencyAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub "${ProjectName}-${Environment}-rds-read-latency-high"
-      AlarmDescription: "RDS ReadLatency > 1 giây — database đang quá tải"
-      Namespace: AWS/RDS
-      MetricName: ReadLatency
-      Dimensions:
-        - Name: DBInstanceIdentifier
-          Value: !Ref RDSInstanceIdentifier
-      Statistic: Average
-      Period: 300
-      EvaluationPeriods: 2
-      Threshold: 1.0
-      ComparisonOperator: GreaterThanThreshold
-      TreatMissingData: notBreaching
-      AlarmActions:
-        - !Ref AdminAlertTopic
-
-  # ══════════════════════════════════════════════════════════════
-  # 8. CLOUDWATCH ALARMS — Application Log Errors (từ Metric Filters)
-  # ══════════════════════════════════════════════════════════════
-
-  # 8a. PHP Fatal Error trong log
-  PHPFatalAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub "${ProjectName}-${Environment}-php-fatal-error"
-      AlarmDescription: "Phát hiện PHP Fatal Error / Uncaught Exception trong log ECS container"
-      Namespace: !Sub "${ProjectName}/${Environment}/AppErrors"
-      MetricName: PHPFatalErrorCount
-      Statistic: Sum
-      Period: 300
-      EvaluationPeriods: 1
-      Threshold: 0
-      ComparisonOperator: GreaterThanThreshold
-      TreatMissingData: notBreaching
-      AlarmActions:
-        - !Ref AdminAlertTopic
-
-  # 8b. Database Error trong log
-  DBErrorAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub "${ProjectName}-${Environment}-db-error"
-      AlarmDescription: "Phát hiện lỗi database (PDOException, SQLSTATE) trong log ECS container"
-      Namespace: !Sub "${ProjectName}/${Environment}/AppErrors"
-      MetricName: DBErrorCount
-      Statistic: Sum
-      Period: 300
-      EvaluationPeriods: 1
-      Threshold: 0
-      ComparisonOperator: GreaterThanThreshold
-      TreatMissingData: notBreaching
-      AlarmActions:
-        - !Ref AdminAlertTopic
-
-  # 8c. HTTP 5xx errors cao
-  HTTP5xxAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub "${ProjectName}-${Environment}-http-5xx-errors"
-      AlarmDescription: "Phát hiện HTTP 5xx errors trong log ECS — ứng dụng đang trả lỗi cho user"
-      Namespace: !Sub "${ProjectName}/${Environment}/AppErrors"
-      MetricName: HTTP5xxCount
-      Statistic: Sum
-      Period: 300
-      EvaluationPeriods: 1
-      Threshold: 5
-      ComparisonOperator: GreaterThanThreshold
-      TreatMissingData: notBreaching
-      AlarmActions:
-        - !Ref AdminAlertTopic
 
 # ══════════════════════════════════════════════════════════════
 # OUTPUTS
