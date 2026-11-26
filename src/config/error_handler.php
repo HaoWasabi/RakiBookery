@@ -4,7 +4,8 @@
  * Global Error & Exception Handler cho RakiBookery
  *
  * Bắt các lỗi PHP chưa được xử lý (fatal errors, uncaught exceptions, E_ERROR)
- * rồi gửi cảnh báo qua SnsService → API Gateway → Lambda → SNS Email cho admin.
+ * rồi ghi log nội bộ. Việc alert admin được xử lý bởi CloudWatch Alarms
+ * (đọc ECS logs → metric filter → SNS Topic) — không gửi SNS trực tiếp từ đây.
  *
  * Cách hoạt động:
  *   1. set_exception_handler → bắt mọi Throwable chưa được catch
@@ -12,20 +13,18 @@
  *   3. register_shutdown_function → bắt fatal error (parse error, OOM, ...)
  *      vì fatal error không đi qua set_error_handler
  *
- * Chỉ load SnsService khi thực sự cần gửi (lazy load) để tránh vòng lặp lỗi.
+ * Alert hệ thống: CloudWatch Logs Metric Filter + Alarm → AdminAlertTopic (SNS)
+ * (cấu hình trong cloudformation-code/raki-monitoring.yaml)
  *
  * Biến môi trường:
- *   NOTIFY_API_URL   — URL API Gateway để publish SNS (đã có trong SnsService)
- *   APP_ENV          — môi trường (prod/staging/dev); chỉ gửi SNS ở prod & staging
+ *   APP_ENV — môi trường (prod/staging/dev)
  */
 
 // ─────────────────────────────────────────────────────────────
 // 1. Uncaught Exception / Error handler
 // ─────────────────────────────────────────────────────────────
 set_exception_handler(function (Throwable $e): void {
-    $appEnv = env('APP_ENV', 'prod');
-
-    // Log nội bộ
+    // Log nội bộ → CloudWatch Logs đọc và alert qua Alarm nếu vượt ngưỡng
     $msg = sprintf(
         '[EXCEPTION] %s: %s in %s on line %d',
         get_class($e),
@@ -34,23 +33,7 @@ set_exception_handler(function (Throwable $e): void {
         $e->getLine()
     );
     error_log($msg);
-
-    // Gửi SNS chỉ ở môi trường production / staging
-    if (in_array($appEnv, ['prod', 'staging'], true)) {
-        _snsSendError(
-            subject: "[RakiBookery][{$appEnv}] Uncaught Exception: " . get_class($e),
-            message: implode("\n", [
-                "Môi trường : {$appEnv}",
-                "Exception  : " . get_class($e),
-                "Message    : " . $e->getMessage(),
-                "File       : " . $e->getFile() . ':' . $e->getLine(),
-                "Thời gian  : " . date('d/m/Y H:i:s'),
-                '',
-                '--- Stack Trace (10 dòng đầu) ---',
-                _truncateTrace($e->getTraceAsString()),
-            ])
-        );
-    }
+    error_log('[EXCEPTION] Stack trace: ' . _truncateTrace($e->getTraceAsString()));
 
     // Hiển thị lỗi thân thiện cho user
     _renderErrorPage(500, 'Có lỗi xảy ra, vui lòng thử lại sau.');
@@ -65,22 +48,14 @@ set_error_handler(function (int $errno, string $errstr, string $errfile, int $er
         return false;
     }
 
-    $appEnv = env('APP_ENV', 'prod');
-
-    // Chỉ gửi SNS cho các lỗi nghiêm trọng
-    $criticalLevels = [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR];
-    if (in_array($appEnv, ['prod', 'staging'], true) && in_array($errno, $criticalLevels, true)) {
-        _snsSendError(
-            subject: "[RakiBookery][{$appEnv}] PHP Error (E{$errno}): " . substr($errstr, 0, 80),
-            message: implode("\n", [
-                "Môi trường : {$appEnv}",
-                "Error Level: " . _errorLevelName($errno) . " ({$errno})",
-                "Message    : {$errstr}",
-                "File       : {$errfile}:{$errline}",
-                "Thời gian  : " . date('d/m/Y H:i:s'),
-            ])
-        );
-    }
+    // Log nội bộ → CloudWatch Logs đọc và alert qua Alarm nếu vượt ngưỡng
+    error_log(sprintf(
+        '[%s] %s in %s on line %d',
+        _errorLevelName($errno),
+        $errstr,
+        $errfile,
+        $errline
+    ));
 
     // Trả false để PHP cũng ghi vào error_log bình thường
     return false;
@@ -100,48 +75,15 @@ register_shutdown_function(function (): void {
         return;
     }
 
-    $appEnv = env('APP_ENV', 'prod');
-    if (!in_array($appEnv, ['prod', 'staging'], true)) {
-        return;
-    }
-
-    _snsSendError(
-        subject: "[RakiBookery][{$appEnv}] PHP FATAL: " . substr($error['message'], 0, 80),
-        message: implode("\n", [
-            "Môi trường : {$appEnv}",
-            "Error Type : " . _errorLevelName($error['type']),
-            "Message    : " . $error['message'],
-            "File       : " . $error['file'] . ':' . $error['line'],
-            "Thời gian  : " . date('d/m/Y H:i:s'),
-        ])
-    );
+    // Log nội bộ → CloudWatch Logs đọc và alert qua Alarm nếu vượt ngưỡng
+    error_log(sprintf(
+        '[PHP Fatal] %s: %s in %s on line %d',
+        _errorLevelName($error['type']),
+        $error['message'],
+        $error['file'],
+        $error['line']
+    ));
 });
-
-// ─────────────────────────────────────────────────────────────
-// Helper: gửi SNS (lazy load SnsService)
-// ─────────────────────────────────────────────────────────────
-function _snsSendError(string $subject, string $message): void
-{
-    // Guard: NOTIFY_API_URL chưa set → không làm gì
-    $apiUrl = env('NOTIFY_API_URL', '');
-    if (empty($apiUrl)) {
-        return;
-    }
-
-    // Lazy load SnsService để tránh lỗi circular dependency
-    static $sns = null;
-    if ($sns === null) {
-        $servicePath = __DIR__ . '/../app/services/SnsService.php';
-        if (file_exists($servicePath)) {
-            require_once $servicePath;
-            $sns = new SnsService();
-        }
-    }
-
-    if ($sns !== null) {
-        $sns->publish($subject, $message);
-    }
-}
 
 // ─────────────────────────────────────────────────────────────
 // Helper: tên readable của error level
@@ -169,7 +111,7 @@ function _errorLevelName(int $level): string
 }
 
 // ─────────────────────────────────────────────────────────────
-// Helper: cắt ngắn stack trace (tránh SNS email quá dài)
+// Helper: cắt ngắn stack trace (tránh log quá dài)
 // ─────────────────────────────────────────────────────────────
 function _truncateTrace(string $trace, int $maxLines = 10): string
 {
