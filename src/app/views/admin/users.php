@@ -1,4 +1,11 @@
 <!-- Users Content -->
+<style>
+    #usersTable tbody tr.row-self,
+    #usersTable tbody tr.row-self:hover,
+    #usersTable tbody tr.row-self > * {
+        background-color: #dbeafe !important;
+    }
+</style>
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 mb-0 text-gray-800">Quản lý người dùng</h1>
@@ -72,7 +79,10 @@
                         <?php foreach ($users as $user): ?>
                             <tr data-id="<?= $user['UserID'] ?>"
                                 data-name="<?= htmlspecialchars($user['Name'], ENT_QUOTES) ?>"
-                                data-status="<?= $user['Status'] ?>">
+                                data-status="<?= $user['Status'] ?>"
+                                <?php if ($user['UserID'] == $_SESSION['UserID']): ?>
+                                    class="row-self"
+                                <?php endif; ?>>
                                 <td><?= $user['UserID'] ?></td>
                                 <td><?= $user['Name'] ?></td>
                                 <td><?= $user['Email'] ?></td>
@@ -124,6 +134,7 @@
         const dataContainer = document.getElementById('data-container');
 
         let usersTable = null;
+        const currentUserId = <?= intval($_SESSION['UserID'] ?? 0) ?>;
         // Initial data load - immediate, no delay
         loadUsersData();
 
@@ -242,6 +253,10 @@
                     row.setAttribute('data-id', user.UserID);
                     row.setAttribute('data-name', user.Name);
                     row.setAttribute('data-status', user.Status);
+
+                    if (parseInt(user.UserID) === currentUserId) {
+                        row.classList.add('row-self');
+                    }
 
                     // ID column
                     let cell = document.createElement('td');
@@ -386,6 +401,12 @@
                         }
 
                         pagination.addClass('pagination-sm');
+                    },
+                    rowCallback: function (row, data, index) {
+                        const rowId = parseInt($(row).attr('data-id'));
+                        if (rowId === currentUserId) {
+                            $(row).addClass('row-self');
+                        }
                     }
                 });
 

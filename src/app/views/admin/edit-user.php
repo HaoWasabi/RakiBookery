@@ -1,6 +1,13 @@
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Thông tin người dùng</h1>
+        <h1 class="h3 mb-0 text-gray-800">
+            Thông tin người dùng
+            <?php if (!empty($isSelf)): ?>
+                <span class="badge bg-primary ms-2" style="font-size: 0.6em; vertical-align: middle;">
+                    <i class="fas fa-user-circle me-1"></i>Tài khoản của tôi
+                </span>
+            <?php endif; ?>
+        </h1>
         <a href="javascript:history.back()" class="btn btn-secondary">
             <i class="fas fa-arrow-left mr-2"></i> Quay lại
         </a>
@@ -30,6 +37,7 @@
                 <hr>
 
                 <div class="d-flex justify-content-end gap-2">
+                    <?php if (!isset($isTargetAdmin) || !$isTargetAdmin): ?>
                     <button type="button" class="btn btn-secondary me-2" id="cancel-btn" style="display: none;">
                         <i class="fas fa-times mr-2"></i> Hủy
                     </button>
@@ -41,6 +49,11 @@
                     <button type="button" class="btn btn-primary" id="edit-btn">
                         <i class="fas fa-edit mr-2"></i> Chỉnh sửa
                     </button>
+                    <?php else: ?>
+                    <span class="text-muted fst-italic">
+                        <i class="fas fa-lock mr-1"></i> Không thể chỉnh sửa tài khoản admin khác
+                    </span>
+                    <?php endif; ?>
                 </div>
             </form>
         </div>
@@ -50,6 +63,7 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const form = document.getElementById('user-form');
+        <?php if (!isset($isTargetAdmin) || !$isTargetAdmin): ?>
         const editBtn = document.getElementById('edit-btn');
         const cancelBtn = document.getElementById('cancel-btn');
         const submitBtn = document.getElementById('submitBtn');
@@ -246,6 +260,7 @@
                 }
             );
         });
+        <?php endif; ?>
         /* 
                 function showConfirmation(title, message, confirmCallback) {
                     if (typeof Swal !== 'undefined') {

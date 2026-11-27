@@ -153,6 +153,16 @@ class AdminController extends BaseController
             $this->redirect('/admin/users');
         }
 
+        // Khóa chỉnh sửa nếu user đích là admin và không phải chính mình
+        $this->data['isTargetAdmin'] = (
+            isset($this->data['user']['Role']) &&
+            $this->data['user']['Role'] === 'admin' &&
+            $this->data['user']['UserID'] != $_SESSION['UserID']
+        );
+
+        // Đánh dấu khi admin đang xem tài khoản của chính mình
+        $this->data['isSelf'] = ($this->data['user']['UserID'] == $_SESSION['UserID']);
+
         $this->renderView('edit-user', 'Chỉnh sửa người dùng', 'users');
     }
 

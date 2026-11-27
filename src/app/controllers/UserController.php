@@ -325,6 +325,9 @@ class UserController extends BaseController
     {
         $this->requireAdmin();
         $this->requirePost();
+        
+        $userData = $this->getRequestData();
+
         if (isset($userData['Phone']) && $userData['Phone'] && $this->userModel->phoneExists($userData['Phone'])) {
             $this->responseJson([
                 'success' => false,
@@ -369,7 +372,26 @@ class UserController extends BaseController
 
         $userData = $this->getRequestData();
 
-        // Check if email already exists for other users
+        // Admin không được phép cập nhật thông tin của admin khác
+        $targetUser = $this->userModel->getUserById($userData['id']);
+        if (!$targetUser) {
+            $this->responseJson([
+                'success' => false,
+                'message' => 'Không tìm thấy người dùng'
+            ], 404);
+            return;
+        }
+
+        if ($targetUser['Role'] === 'admin' && $targetUser['UserID'] != $_SESSION['UserID']) {
+            $this->responseJson([
+                'success' => false,
+                'message' => 'Bạn không có quyền cập nhật thông tin của admin khác',
+                'error' => 'forbidden_admin'
+            ], 403);
+            return;
+        }
+
+        // Kiểm tra email đã tồn tại ở người dùng khác chưa
         if ($this->userModel->emailExistsForOtherUser($userData['Email'], $userData['id'])) {
             $this->responseJson([
                 'success' => false,
@@ -379,7 +401,7 @@ class UserController extends BaseController
             return;
         }
 
-        // Check if phone already exists for other users
+        // Kiểm tra số điện thoại đã tồn tại ở người dùng khác chưa
         if (isset($userData['Phone']) && $userData['Phone'] && $this->userModel->phoneExistsForOtherUser($userData['Phone'], $userData['id'])) {
             $this->responseJson([
                 'success' => false,
