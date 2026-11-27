@@ -15,6 +15,24 @@ class Book
         }
     }
 
+    // Trừ tồn kho nguyên tử — phải gọi trong transaction đang mở.
+    // Trả về true nếu thành công, false nếu không đủ tồn kho hoặc sách không còn bán.
+    public function decrementStock(int $bookId, int $quantity): bool
+    {
+        try {
+            $stmt = $this->conn->prepare("
+                UPDATE book
+                SET Stock = Stock - ?
+                WHERE BookID = ? AND Status = 1 AND Stock >= ?
+            ");
+            $stmt->execute([$quantity, $bookId, $quantity]);
+            return $stmt->rowCount() === 1;
+        } catch (PDOException $e) {
+            error_log('Lỗi trừ tồn kho BookID=' . $bookId . ': ' . $e->getMessage());
+            return false;
+        }
+    }
+
     // Thêm sách mới
     public function createBook($name, $description, $price, $stock, $imageURL, $categoryID, $length, $weight, $dimensions, $language, $format, $author, $publisher, $releaseDate, $status)
     {

@@ -159,6 +159,11 @@ class OrderController extends BaseController
                 return;
             }
 
+            if ($book['Stock'] < $quantity) {
+                $this->responseJson(['success' => false, 'message' => 'Sản phẩm "' . $book['Name'] . '" chỉ còn ' . $book['Stock'] . ' cuốn trong kho.']);
+                return;
+            }
+
             $recalculatedCart[] = [
                 'product_id' => $productId,
                 'quantity'   => $quantity,
@@ -202,6 +207,11 @@ class OrderController extends BaseController
             }
 
             foreach ($recalculatedCart as $item) {
+                // Trừ tồn kho nguyên tử — rollback toàn bộ nếu không đủ hàng
+                if (!$bookModel->decrementStock($item['product_id'], $item['quantity'])) {
+                    throw new RuntimeException('Sản phẩm ID ' . $item['product_id'] . ' không đủ tồn kho.');
+                }
+
                 $ok = $this->orderDetailModel->createOrderDetail($orderId, $item['product_id'], $item['quantity'], $item['price']);
                 if (!$ok) {
                     throw new RuntimeException('Lỗi khi lưu chi tiết đơn hàng (sản phẩm ID ' . $item['product_id'] . ').');

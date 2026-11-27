@@ -17,6 +17,7 @@ class PayPalController extends BaseController
     private $promoModel;
     private $paymentMethodModel;
     private $snsService;
+    private $bookModel;
 
     public function __construct()
     {
@@ -26,6 +27,8 @@ class PayPalController extends BaseController
         $this->promoModel       = new Promo();
         $this->paymentMethodModel = new PaymentMethod();
         $this->snsService       = new SnsService();
+        require_once ROOT_PATH . '/app/models/Book.php';
+        $this->bookModel        = new Book();
     }
 
     // -----------------------------------------------------------------------
@@ -110,8 +113,7 @@ class PayPalController extends BaseController
         }
 
         // Tính lại giá từ database — không tin giá lưu trong session
-        require_once ROOT_PATH . '/app/models/Book.php';
-        $bookModel = new Book();
+        $bookModel = $this->bookModel;
         $recalculatedCart = [];
 
         foreach ($_SESSION['cart'] as $item) {
@@ -122,6 +124,10 @@ class PayPalController extends BaseController
             $book = $bookModel->getAvailableBookById($productId);
             if (!$book) {
                 throw new RuntimeException('Sản phẩm không còn bán: ID ' . $productId);
+            }
+
+            if ($book['Stock'] < $quantity) {
+                throw new RuntimeException('Sản phẩm "' . $book['Name'] . '" chỉ còn ' . $book['Stock'] . ' cuốn trong kho.');
             }
 
             $recalculatedCart[] = [
@@ -248,6 +254,9 @@ class PayPalController extends BaseController
 
             $result = json_decode($response, true);
 
+            // Lưu PayPal Order ID vào checkout session để ràng buộc với phiên này
+            $_SESSION['paypal_checkout']['paypalOrderId'] = $result['id'];
+
             $this->responseJson([
                 'success' => true,
                 'id'      => $result['id'],
@@ -277,6 +286,18 @@ class PayPalController extends BaseController
             return;
         }
 
+        // Idempotency guard: kiểm tra trước mọi điều kiện khác —
+        // paypal_checkout đã bị xóa sau khi xử lý thành công nên không thể
+        // kiểm tra sau điều kiện session.
+        if (isset($_SESSION['paypal_processed'][$paypalOrderId])) {
+            $this->responseJson([
+                'success' => true,
+                'message' => 'Thanh toán PayPal thành công!',
+                'orderId' => $_SESSION['paypal_processed'][$paypalOrderId],
+            ]);
+            return;
+        }
+
         // Đọc thông tin đơn hàng đã lưu trong session
         $checkout = $_SESSION['paypal_checkout'] ?? null;
         if (!$checkout || empty($checkout['cart'])) {
@@ -284,13 +305,15 @@ class PayPalController extends BaseController
             return;
         }
 
-        // Idempotency guard: kiểm tra paypalOrderId đã xử lý thành công chưa
-        if (isset($_SESSION['paypal_processed'][$paypalOrderId])) {
-            $this->responseJson([
-                'success' => true,
-                'message' => 'Thanh toán PayPal thành công!',
-                'orderId' => $_SESSION['paypal_processed'][$paypalOrderId],
-            ]);
+        // Ràng buộc PayPal Order ID với phiên checkout: chỉ chấp nhận ID đã được tạo bởi chính phiên này
+        if (($checkout['paypalOrderId'] ?? '') !== $paypalOrderId) {
+            error_log(sprintf(
+                'PAYPAL_ID_MISMATCH | SessionPayPalID=%s | ReceivedID=%s | UserID=%d',
+                $checkout['paypalOrderId'] ?? 'none',
+                $paypalOrderId,
+                $checkout['userId'] ?? 0
+            ));
+            $this->responseJson(['success' => false, 'message' => 'Giao dịch không hợp lệ.']);
             return;
         }
 
@@ -322,6 +345,21 @@ class PayPalController extends BaseController
                 throw new RuntimeException('Thanh toán PayPal thất bại. Vui lòng thử lại.');
             }
 
+            // Xác minh số tiền và tiền tệ từ response PayPal khớp với session
+            $capturedAmount    = (float) ($result['purchase_units'][0]['payments']['captures'][0]['amount']['value']         ?? 0);
+            $capturedCurrency  =          $result['purchase_units'][0]['payments']['captures'][0]['amount']['currency_code'] ?? '';
+            $expectedAmount    = (float) $this->convertToPayPalAmount($checkout['totalAmount']);
+            $expectedCurrency  = PAYPAL_CURRENCY === 'VND' ? 'USD' : PAYPAL_CURRENCY;
+
+            if ($capturedCurrency !== $expectedCurrency || abs($capturedAmount - $expectedAmount) > 0.01) {
+                error_log(sprintf(
+                    'PAYPAL_AMOUNT_MISMATCH | PayPalOrderID=%s | Captured=%s %s | Expected=%s %s | UserID=%d',
+                    $paypalOrderId, $capturedAmount, $capturedCurrency,
+                    $expectedAmount, $expectedCurrency, $checkout['userId']
+                ));
+                throw new RuntimeException('Số tiền giao dịch không khớp. Vui lòng liên hệ hỗ trợ.');
+            }
+
             // Capture thành công — lưu toàn bộ đơn hàng trong một transaction
             $this->orderModel->beginTransaction();
             try {
@@ -339,6 +377,11 @@ class PayPalController extends BaseController
                 }
 
                 foreach ($checkout['cart'] as $item) {
+                    // Trừ tồn kho nguyên tử — rollback toàn bộ nếu không đủ hàng
+                    if (!$this->bookModel->decrementStock($item['product_id'], $item['quantity'])) {
+                        throw new RuntimeException('Sản phẩm ID ' . $item['product_id'] . ' không đủ tồn kho.');
+                    }
+
                     $ok = $this->orderDetailModel->createOrderDetail(
                         $orderId,
                         $item['product_id'],
