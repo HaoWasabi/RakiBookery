@@ -312,8 +312,8 @@ class PayPalController extends BaseController
                 );
             }
 
-            // Cập nhật trạng thái đơn hàng sang 'processing' vì đã thanh toán
-            $this->orderModel->updateOrderStatus($orderId, 'processing');
+            // Cập nhật trạng thái đơn hàng sang 'pending' vì đã thanh toán qua PayPal
+            $this->orderModel->updateOrderStatus($orderId, 'pending');
 
             // Thông báo SNS cho admin
             $this->snsService->notifyNewOrder($orderId, $checkout['totalAmount'], 'PayPal');

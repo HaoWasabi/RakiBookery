@@ -347,7 +347,7 @@
                     trải nghiệm đọc sách tuyệt vời nhất.</p>
             </div>
             <div class="col-lg-4 text-lg-end" data-aos="fade-left">
-                <a href="index.php" class="btn btn-outline-light btn-lg px-4 py-3">
+                <a href="/shop" class="btn btn-outline-light btn-lg px-4 py-3">
                     <i class="fas fa-book-open me-2"></i> Khám phá ngay
                 </a>
             </div>
