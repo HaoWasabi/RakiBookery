@@ -148,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let prices = allBooks.map(book => parseFloat((book.Price)));
         let minPrice = 0;
-        let maxPrice = Math.max(...prices);
+        let maxPrice = 1000000;
 
         // Function to fetch the latest product data before searching
         const fetchLatestProductData = async () => {
@@ -160,9 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data.success) {
                     allBooks = data.data.books;
 
-                    // Cập nhật giá trị min/max từ dữ liệu mới
-                    prices = allBooks.map(book => parseFloat((book.Price)));
-                    maxPrice = Math.max(...prices);
+                    // maxPrice cố định 1.000.000, không tính lại từ data
 
                     // Cập nhật range cho slider
                     if (priceSlider && priceSlider.noUiSlider) {
@@ -448,6 +446,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Apply initial filter
         applyFilters();
+
+        // Sắp xếp ngay khi thay đổi dropdown
+        document.getElementById('sort-by').addEventListener('change', function () {
+            applyFilters();
+        });
 
         // Fetch latest product data after initial load (không phải chờ người dùng click)
         /*         setTimeout(() => {
