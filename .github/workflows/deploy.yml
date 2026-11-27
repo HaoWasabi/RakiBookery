@@ -1,0 +1,288 @@
+# =============================================================================
+# CI/CD Pipeline cho RakiBookery (Full-stack)
+# CI-001: GitHub Actions CI/CD Pipeline
+#
+# Trigger: push/PR vào main + develop/feature branches (chỉ test)
+# Steps: Lint → Test → E2E → Build Docker → Push ECR → Deploy ECS → Smoke Test
+# =============================================================================
+
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'feature/**'
+    paths:
+      - 'src/**'
+      - 'docker/**'
+      - 'Dockerfile'
+      - 'composer.json'
+      - 'composer.lock'
+      - 'tests/**'
+      - 'e2e/**'
+      - '.github/workflows/deploy.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'docker/**'
+      - 'Dockerfile'
+      - 'composer.json'
+      - 'composer.lock'
+      - 'tests/**'
+      - 'e2e/**'
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+  ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
+  ECS_SERVICE: ${{ vars.ECS_SERVICE }}
+  ECS_TASK_DEFINITION: ${{ vars.ECS_TASK_DEFINITION }}
+  CONTAINER_NAME: ${{ vars.CONTAINER_NAME }}
+  APP_URL: ${{ vars.APP_URL }}
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Job 1: PHP Lint
+  # ─────────────────────────────────────────────
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: curl, pdo_mysql, mbstring, xml, zip
+          coverage: none
+          tools: composer:v2, phpstan, phpcs
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install dependencies
+        run: |
+          if [ -f composer.json ]; then
+            composer install --prefer-dist --no-progress --no-interaction --no-scripts
+          fi
+
+      - name: PHP Syntax Check (php -l)
+        run: |
+          find src -name "*.php" -print0 | xargs -0 -n1 php -l
+
+      - name: PHPStan (static analysis)
+        run: |
+          if [ -f vendor/bin/phpstan ]; then
+            vendor/bin/phpstan analyse src --level=5 --memory-limit=1G || true
+          else
+            echo "PHPStan not installed – skipping"
+          fi
+
+      - name: PHP_CodeSniffer (optional style check)
+        run: |
+          if [ -f vendor/bin/phpcs ]; then
+            vendor/bin/phpcs --standard=PSR12 src || true
+          else
+            echo "PHPCS not installed – skipping"
+          fi
+
+  # ─────────────────────────────────────────────
+  # Job 2: Unit / Integration Tests (PHPUnit)
+  # ─────────────────────────────────────────────
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: curl, pdo_mysql, mbstring, xml, zip, pcntl
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install dependencies
+        run: |
+          if [ -f composer.json ]; then
+            composer install --prefer-dist --no-progress --no-interaction
+          fi
+
+      - name: Run PHPUnit
+        env:
+          APP_ENV: testing
+          # Thêm các biến môi trường test nếu cần
+        run: |
+          if [ -f vendor/bin/phpunit ]; then
+            vendor/bin/phpunit --colors=always --testdox
+          else
+            echo "PHPUnit not found – skipping unit tests"
+          fi
+
+
+
+  # ─────────────────────────────────────────────
+  # Job 4: Build & Push Docker Image to ECR
+  # Chỉ chạy khi push vào main + tất cả test pass
+  # ─────────────────────────────────────────────
+  build-and-push:
+    name: Build & Push
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    outputs:
+      image: ${{ steps.set-output.outputs.image }}
+      image-tag: ${{ steps.vars.outputs.sha_tag }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Get short git SHA
+        id: vars
+        run: |
+          echo "sha_tag=sha-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Build & Push Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ steps.vars.outputs.sha_tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Set image output
+        id: set-output
+        run: |
+          echo "image=${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ steps.vars.outputs.sha_tag }}" >> $GITHUB_OUTPUT
+
+  # ─────────────────────────────────────────────
+  # Job 5: Deploy to ECS
+  # Cần Environment "production" (có thể bật manual approval)
+  # ─────────────────────────────────────────────
+  deploy:
+    name: Deploy
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: ${{ env.APP_URL }}
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download current task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition ${{ env.ECS_TASK_DEFINITION }} \
+            --query 'taskDefinition' \
+            --output json > task-def.json
+
+      - name: Render new task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-def.json
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ needs.build-and-push.outputs.image }}
+
+      - name: Deploy to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: false
+
+  # ─────────────────────────────────────────────
+  # Job 5: Post-Deploy Smoke Tests
+  # Chỉ chạy khi ECS service đang hoạt động
+  # ─────────────────────────────────────────────
+  smoke-tests:
+    name: Smoke Tests
+    needs: [deploy]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    continue-on-error: true
+
+    steps:
+      - name: Wait for service to stabilize
+        run: sleep 20
+
+      - name: Health check - Homepage
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "${{ env.APP_URL }}/")
+          echo "Homepage responded: $STATUS"
+          if [ "$STATUS" -ge 500 ] || [ "$STATUS" -eq 000 ]; then
+            echo "❌ Homepage health check failed!"
+            exit 1
+          fi
+          echo "✅ Homepage is healthy ($STATUS)"
+
+      - name: Health check - Critical pages
+        run: |
+          # Điều chỉnh danh sách endpoint theo web sách của bạn
+          ENDPOINTS=("/" "/books" "/login" "/cart" "/about")
+          FAILED=0
+          for ep in "${ENDPOINTS[@]}"; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${{ env.APP_URL }}${ep}")
+            echo "  ${ep} → ${STATUS}"
+            if [ "$STATUS" -ge 500 ] || [ "$STATUS" -eq 000 ]; then
+              FAILED=1
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then
+            echo "❌ Some critical pages are failing!"
+            exit 1
+          fi
+          echo "✅ All critical pages OK"

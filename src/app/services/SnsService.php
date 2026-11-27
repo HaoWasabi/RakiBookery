@@ -18,6 +18,9 @@
  *   $sns->notifyNewOrder($orderId, $totalAmount, 'PayPal');
  *   $sns->notifyStatusChanged($orderId, 'confirmed');
  *   $sns->publish('Subject', 'Nội dung tùy ý');
+ *
+ * Lỗi hệ thống (PHP fatal/exception) KHÔNG gửi qua đây — được xử lý bởi
+ * CloudWatch Logs Metric Filter + Alarm → SNS Topic (xem raki-monitoring.yaml).
  */
 class SnsService
 {
