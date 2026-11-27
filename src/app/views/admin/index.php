@@ -9,6 +9,22 @@
     <!-- Favicon -->
     <link rel="icon" href="/img/logo.jpg" type="image/jpeg">
 
+    <!-- Prevent sidebar flash: apply collapsed state before first paint -->
+    <script>
+        (function () {
+            var c = document.cookie.split(';');
+            for (var i = 0; i < c.length; i++) {
+                var p = c[i].trim();
+                if (p.indexOf('sidebarCollapsed=') === 0) {
+                    if (p.substring('sidebarCollapsed='.length) === 'true') {
+                        document.documentElement.classList.add('sidebar-collapsed');
+                    }
+                    break;
+                }
+            }
+        })();
+    </script>
+
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 

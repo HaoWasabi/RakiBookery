@@ -152,12 +152,12 @@
                             $isPaypal = stripos($method['Name'], 'paypal') !== false;
                             $isCod    = stripos($method['Name'], 'tiền mặt') !== false || stripos($method['Name'], 'cod') !== false;
                         ?>
-                            <div class="form-check payment-method-item mb-3"<?= !$isPaypal ? ' style="display:none;"' : '' ?>>
+                            <div class="form-check payment-method-item mb-3<?= $isPaypal ? ' payment-method-selected' : '' ?>"<?= !$isPaypal ? ' style="display:none;"' : '' ?>>
                                 <input class="form-check-input" type="radio" name="paymentMethod"
                                     id="payment-<?= $method['PaymentMethodID'] ?>"
                                     value="<?= $method['PaymentMethodID'] ?>"
                                     data-type="<?= $isPaypal ? 'paypal' : 'standard' ?>"
-                                    <?= $method['PaymentMethodID'] == 1 ? 'checked' : '' ?>>
+                                    <?= $isPaypal ? 'checked' : '' ?>>
                                 <label class="form-check-label d-flex align-items-center"
                                     for="payment-<?= $method['PaymentMethodID'] ?>">
                                     <?php if ($isPaypal): ?>
@@ -259,13 +259,8 @@
                         <span id="orderTotal" class="h5 text-danger">0 ₫</span>
                     </div>
                     <div class="d-grid gap-2">
-                        <!-- Nút đặt hàng thông thường (COD / các PTTT khác) -->
-                        <button id="placeOrderButton" class="btn btn-danger btn-lg">
-                            <i class="fas fa-shopping-bag me-2"></i>Đặt hàng
-                        </button>
-
-                        <!-- PayPal Smart Buttons — chỉ hiện khi chọn PayPal -->
-                        <div id="paypal-button-container" class="d-none"></div>
+                        <!-- PayPal Smart Buttons -->
+                        <div id="paypal-button-container"></div>
 
                         <a href="/cart" class="btn btn-outline-secondary">
                             <i class="fas fa-arrow-left me-2"></i>Quay lại giỏ hàng
@@ -284,7 +279,6 @@
         const orderSummaryCount = document.getElementById('orderSummaryCount');
         const orderSubtotal = document.getElementById('orderSubtotal');
         const orderTotal = document.getElementById('orderTotal');
-        const placeOrderButton = document.getElementById('placeOrderButton');
         const checkoutForm = document.getElementById('checkoutForm');
         const errorAlert = document.getElementById('checkoutErrorAlert');
         const errorAlertMessage = document.getElementById('errorAlertMessage');
@@ -435,16 +429,6 @@
         // Trạng thái của ô promo: 'empty' | 'valid' | 'invalid'
         window.promoState = 'empty';
 
-        function updatePlaceOrderButton() {
-            if (window.promoState === 'invalid') {
-                placeOrderButton.disabled = true;
-                placeOrderButton.title = 'Mã khuyến mãi không hợp lệ. Vui lòng xóa hoặc nhập mã đúng.';
-            } else {
-                placeOrderButton.disabled = false;
-                placeOrderButton.title = '';
-            }
-        }
-
         // Khi người dùng thay đổi nội dung ô promo, reset trạng thái
         document.getElementById('promoCodeInput').addEventListener('input', function () {
             const val = this.value.trim();
@@ -462,7 +446,6 @@
                 document.getElementById('promoMessage').textContent = 'Nhấn "Áp dụng" để kiểm tra mã.';
                 applyCurrentPromo();
             }
-            updatePlaceOrderButton();
         });
 
         function applyCurrentPromo() {
@@ -524,13 +507,11 @@
                     msgEl.textContent = data.message;
                 }
                 applyCurrentPromo();
-                updatePlaceOrderButton();
             })
             .catch(() => {
                 window.promoState = 'invalid';
                 msgEl.className = 'form-text text-danger mt-1';
                 msgEl.textContent = 'Lỗi kết nối. Vui lòng thử lại.';
-                updatePlaceOrderButton();
             })
             .finally(() => {
                 this.disabled = false;
@@ -647,66 +628,6 @@
         };
 
         // -----------------------------------------------------------------------
-        // Nút "Đặt hàng" thông thường (COD / các PTTT không phải PayPal)
-        // -----------------------------------------------------------------------
-        placeOrderButton.addEventListener('click', function () {
-            if (!window.validateCheckoutForm()) return;
-
-            const selectedPaymentMethod = document.querySelector('input[name="paymentMethod"]:checked');
-            const formData = window.buildCheckoutFormData(selectedPaymentMethod);
-
-            fetch('/process_checkout', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                if (!response.ok) throw new Error('Network error');
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    window.handleOrderSuccess(data.orderId);
-                } else {
-                    Swal.fire({
-                        title: 'Đặt hàng thất bại',
-                        text: data.message || 'Có lỗi xảy ra khi đặt hàng. Vui lòng thử lại sau.',
-                        icon: 'error',
-                        confirmButtonColor: '#e74c3c',
-                        confirmButtonText: 'Đóng'
-                    });
-                }
-            })
-            .catch(error => {
-                console.error('Checkout error:', error);
-                Swal.fire({
-                    title: 'Lỗi kết nối',
-                    text: 'Có lỗi xảy ra khi kết nối đến máy chủ. Vui lòng thử lại sau.',
-                    icon: 'error',
-                    confirmButtonColor: '#e74c3c',
-                    confirmButtonText: 'Đóng'
-                });
-            });
-        });
-
-        // -----------------------------------------------------------------------
-        // Ẩn/hiện nút tùy theo phương thức thanh toán được chọn
-        // -----------------------------------------------------------------------
-        function togglePaymentButtons() {
-            const selected = document.querySelector('input[name="paymentMethod"]:checked');
-            const isPayPal = selected && selected.dataset.type === 'paypal';
-
-            placeOrderButton.classList.toggle('d-none', isPayPal);
-            document.getElementById('paypal-button-container').classList.toggle('d-none', !isPayPal);
-        }
-
-        document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
-            radio.addEventListener('change', togglePaymentButtons);
-        });
-
-        // Khởi tạo lần đầu
-        togglePaymentButtons();
-
-        // -----------------------------------------------------------------------
         // Form input — clear validation errors
         // -----------------------------------------------------------------------
         checkoutForm.querySelectorAll('input, select, textarea').forEach(element => {
@@ -793,9 +714,8 @@ require_once ROOT_PATH . '/config/paypal.php';
         paypal.Buttons({
             style: {
                 layout: 'vertical',
-                color:  'gold',
                 shape:  'rect',
-                label:  'pay',
+                label:  'checkout',
                 height: 45
             },
 
@@ -926,6 +846,7 @@ require_once ROOT_PATH . '/config/paypal.php';
         padding: 0.75rem;
         border-radius: 0.25rem;
         transition: all 0.2s;
+        border: 1px solid transparent;
     }
 
     .payment-method-item:hover {
@@ -933,20 +854,20 @@ require_once ROOT_PATH . '/config/paypal.php';
     }
 
     .payment-method-item .form-check-input:checked {
-        background-color: #e74c3c;
-        border-color: #e74c3c;
+        background-color: #0070ba;
+        border-color: #0070ba;
+    }
+
+    .payment-method-item.payment-method-selected,
+    .payment-method-item:has(.form-check-input:checked) {
+        background-color: rgba(0, 112, 186, 0.06);
+        border: 1px solid rgba(0, 112, 186, 0.35);
+        border-radius: 8px;
     }
 
     .payment-method-item .form-check-label {
         cursor: pointer;
         font-weight: 500;
-    }
-
-    /* Nút đặt hàng khi bị vô hiệu hóa */
-    #placeOrderButton:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-        pointer-events: auto;
     }
 
     /* PayPal container */

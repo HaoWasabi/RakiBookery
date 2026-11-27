@@ -10,13 +10,17 @@
     bottom: 0;
     z-index: 1030;
     width: 250px;
-    transition: all 0.25s ease-in-out;
     border-right: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .content-wrapper {
     margin-left: 250px;
     width: calc(100% - 250px);
+}
+
+/* Transition chỉ bật sau khi trang đã load xong (gắn bởi JS) */
+body.sidebar-ready .sidebar,
+body.sidebar-ready .content-wrapper {
     transition: all 0.25s ease-in-out;
 }
 
@@ -140,11 +144,13 @@
 }
 
 /* Collapsed sidebar */
-body.sidebar-collapsed .sidebar {
+body.sidebar-collapsed .sidebar,
+html.sidebar-collapsed .sidebar {
     width: 70px;
 }
 
-body.sidebar-collapsed .content-wrapper {
+body.sidebar-collapsed .content-wrapper,
+html.sidebar-collapsed .content-wrapper {
     margin-left: 70px;
     width: calc(100% - 70px);
 }
@@ -153,7 +159,12 @@ body.sidebar-collapsed .logo-text,
 body.sidebar-collapsed .nav-text,
 body.sidebar-collapsed .section-text,
 body.sidebar-collapsed .user-simple,
-body.sidebar-collapsed .heading-line {
+body.sidebar-collapsed .heading-line,
+html.sidebar-collapsed .logo-text,
+html.sidebar-collapsed .nav-text,
+html.sidebar-collapsed .section-text,
+html.sidebar-collapsed .user-simple,
+html.sidebar-collapsed .heading-line {
     opacity: 0;
     visibility: hidden;
     width: 0;
@@ -161,16 +172,19 @@ body.sidebar-collapsed .heading-line {
     transition: opacity 0.2s ease;
 }
 
-body.sidebar-collapsed .menu-icon-wrapper {
+body.sidebar-collapsed .menu-icon-wrapper,
+html.sidebar-collapsed .menu-icon-wrapper {
     margin-right: 0;
 }
 
-body.sidebar-collapsed .nav-link {
+body.sidebar-collapsed .nav-link,
+html.sidebar-collapsed .nav-link {
     justify-content: center;
     padding: 0.75rem 0;
 }
 
-body.sidebar-collapsed .sidebar .nav-link:hover {
+body.sidebar-collapsed .sidebar .nav-link:hover,
+html.sidebar-collapsed .sidebar .nav-link:hover {
     transform: scale(1.1);
 }
 
@@ -193,11 +207,13 @@ body.sidebar-collapsed .sidebar .nav-link:hover {
 }
 
 /* Tooltip for collapsed sidebar */
-body.sidebar-collapsed .sidebar .nav-item {
+body.sidebar-collapsed .sidebar .nav-item,
+html.sidebar-collapsed .sidebar .nav-item {
     position: relative;
 }
 
-body.sidebar-collapsed .sidebar .nav-item:hover::after {
+body.sidebar-collapsed .sidebar .nav-item:hover::after,
+html.sidebar-collapsed .sidebar .nav-item:hover::after {
     content: attr(data-title);
     position: absolute;
     left: 75px;
@@ -214,7 +230,8 @@ body.sidebar-collapsed .sidebar .nav-item:hover::after {
     border-left: 3px solid #e74c3c;
 }
 
-body.sidebar-collapsed .sidebar .nav-item:hover::before {
+body.sidebar-collapsed .sidebar .nav-item:hover::before,
+html.sidebar-collapsed .sidebar .nav-item:hover::before {
     content: '';
     position: absolute;
     top: 50%;

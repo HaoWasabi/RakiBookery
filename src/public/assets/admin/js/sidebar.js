@@ -61,7 +61,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initialize sidebar state from cookie
     const savedState = getCookie('sidebarCollapsed');
     if (savedState === 'true' && window.innerWidth >= 768) {
+        // html.sidebar-collapsed đã được gắn từ <head> — chuyển sang body rồi xóa trên html
         document.body.classList.add('sidebar-collapsed');
+        document.documentElement.classList.remove('sidebar-collapsed');
 
         if (sidebarCollapseBtn) {
             const icon = sidebarCollapseBtn.querySelector('i');
@@ -70,6 +72,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     } else {
+        document.documentElement.classList.remove('sidebar-collapsed');
+
         if (sidebarCollapseBtn) {
             const icon = sidebarCollapseBtn.querySelector('i');
             if (icon) {
@@ -77,6 +81,13 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     }
+
+    // Bật transition sau khi trạng thái đã được restore — tránh giật khi load trang
+    requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+            document.body.classList.add('sidebar-ready');
+        });
+    });
 
     // Event listeners
     if (sidebarCollapseBtn) {
