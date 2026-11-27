@@ -20,11 +20,11 @@
             <div class="col-lg-6 mb-4 mb-lg-0" data-aos="fade-right">
                 <div class="about-image position-relative">
                     <img src="../../img/about/about-1.jpg" alt="Our Story" class="img-fluid rounded shadow">
-                    <div
+                    <!-- <div
                         class="experience-badge bg-danger text-white shadow py-3 px-4 position-absolute bottom-0 end-0 translate-middle-y rounded-pill">
                         <h3 class="mb-0">+<?= date("Y") - $foundedYear ?></h3>
                         <p class="mb-0">Năm kinh nghiệm</p>
-                    </div>
+                    </div> -->
                 </div>
             </div>
             <div class="col-lg-6" data-aos="fade-left">
@@ -332,36 +332,6 @@
                 <div class="separator mx-auto"></div>
                 <p class="lead mt-4">Chúng tôi tự hào hợp tác với các nhà xuất bản và đối tác uy tín để mang đến những
                     sản phẩm chất lượng nhất.</p>
-            </div>
-        </div>
-        <div class="row justify-content-center">
-            <div class="col-lg-10">
-                <div class="row" data-aos="fade-up">
-                    <div class="col-4 col-md-2 mb-4 text-center">
-                        <img src="../../img/about/partner-1.jpg" alt="FHS" class="img-fluid partner-logo"
-                            style="max-height: 80px;">
-                    </div>
-                    <div class="col-4 col-md-2 mb-4 text-center">
-                        <img src="../../img/about/partner-2.jpg" alt="NXBKD" class="img-fluid partner-logo"
-                            style="max-height: 80px;">
-                    </div>
-                    <div class="col-4 col-md-2 mb-4 text-center">
-                        <img src="../../img/about/partner-3.jpg" alt="NN" class="img-fluid partner-logo"
-                            style="max-height: 80px;">
-                    </div>
-                    <div class="col-4 col-md-2 mb-4 text-center">
-                        <img src="../../img/about/partner-4.jpg" alt="Alphabooks" class="img-fluid partner-logo"
-                            style="max-height: 80px;">
-                    </div>
-                    <div class="col-4 col-md-2 mb-4 text-center">
-                        <img src="../../img/about/partner-5.jpg" alt="FN" class="img-fluid partner-logo"
-                            style="max-height: 80px;">
-                    </div>
-                    <div class="col-4 col-md-2 mb-4 text-center">
-                        <img src="../../img/about/partner-6.jpg" alt="PN" class="img-fluid partner-logo"
-                            style="max-height: 80px;">
-                    </div>
-                </div>
             </div>
         </div>
     </div>
