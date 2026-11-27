@@ -143,8 +143,36 @@ class OrderController extends BaseController
             $addressId = $_POST['address_id']; // Dùng địa chỉ hiện có
         }
 
+        // Tính lại tổng tiền từ giá database — không dùng giá lưu trong session
+        require_once __DIR__ . '/../models/Book.php';
+        $bookModel = new Book();
+        $recalculatedCart = [];
+
+        foreach ($_SESSION['cart'] as $item) {
+            $productId = (int) ($item['product_id'] ?? 0);
+            $quantity  = (int) ($item['quantity']   ?? 0);
+            if ($productId <= 0 || $quantity <= 0) continue;
+
+            $book = $bookModel->getAvailableBookById($productId);
+            if (!$book) {
+                $this->responseJson(['success' => false, 'message' => 'Sản phẩm không còn bán: ID ' . $productId]);
+                return;
+            }
+
+            $recalculatedCart[] = [
+                'product_id' => $productId,
+                'quantity'   => $quantity,
+                'price'      => (float) $book['Price'],
+            ];
+        }
+
+        if (empty($recalculatedCart)) {
+            $this->responseJson(['success' => false, 'message' => 'Giỏ hàng không hợp lệ.']);
+            return;
+        }
+
         // Tính tổng tiền đơn hàng (trước giảm giá)
-        $subtotal = array_reduce($_SESSION['cart'], function ($sum, $item) {
+        $subtotal = array_reduce($recalculatedCart, function ($sum, $item) {
             return $sum + ($item['quantity'] * $item['price']);
         }, 0);
 
@@ -165,16 +193,27 @@ class OrderController extends BaseController
             }
         }
 
-        // Lưu đơn hàng vào database
-        $orderId = $this->orderModel->createOrder($userId, $totalAmount, $addressId, $paymentMethodId, $promoId, $subtotal);
-        if (!$orderId) {
-            $this->responseJson(['success' => false, 'message' => 'Lỗi khi tạo đơn hàng']);
-            return;
-        }
+        // Lưu đơn hàng + chi tiết trong một transaction
+        $this->orderModel->beginTransaction();
+        try {
+            $orderId = $this->orderModel->createOrder($userId, $totalAmount, $addressId, $paymentMethodId, $promoId, $subtotal);
+            if (!$orderId) {
+                throw new RuntimeException('Lỗi khi tạo đơn hàng.');
+            }
 
-        // Lưu chi tiết đơn hàng
-        foreach ($_SESSION['cart'] as $item) {
-            $this->orderDetailModel->createOrderDetail($orderId, $item['product_id'], $item['quantity'], $item['price']);
+            foreach ($recalculatedCart as $item) {
+                $ok = $this->orderDetailModel->createOrderDetail($orderId, $item['product_id'], $item['quantity'], $item['price']);
+                if (!$ok) {
+                    throw new RuntimeException('Lỗi khi lưu chi tiết đơn hàng (sản phẩm ID ' . $item['product_id'] . ').');
+                }
+            }
+
+            $this->orderModel->commit();
+        } catch (RuntimeException $e) {
+            $this->orderModel->rollBack();
+            error_log('processCheckout transaction failed: ' . $e->getMessage());
+            $this->responseJson(['success' => false, 'message' => $e->getMessage()]);
+            return;
         }
 
         // Gửi thông báo SNS cho admin

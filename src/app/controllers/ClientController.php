@@ -154,7 +154,6 @@ class ClientController extends BaseController
             return;
         }
 
-        // Lấy dữ liệu từ request
         $data = $this->getRequestData();
 
         if (!isset($data['cart']) || !is_array($data['cart'])) {
@@ -162,10 +161,32 @@ class ClientController extends BaseController
             return;
         }
 
-        // Lưu giỏ hàng vào session
-        $_SESSION['cart'] = $data['cart'];
+        $bookModel = new Book();
+        $validatedCart = [];
 
-        // Trả về thành công
+        foreach ($data['cart'] as $item) {
+            $productId = isset($item['product_id']) ? (int) $item['product_id'] : 0;
+            $quantity  = isset($item['quantity'])   ? (int) $item['quantity']   : 0;
+
+            if ($productId <= 0 || $quantity <= 0) {
+                continue;
+            }
+
+            // Tra giá và kiểm tra sách còn bán từ database — không tin giá từ client
+            $book = $bookModel->getAvailableBookById($productId);
+            if (!$book) {
+                continue; // Sách không tồn tại hoặc đã ngừng bán
+            }
+
+            $validatedCart[] = [
+                'product_id' => $productId,
+                'quantity'   => $quantity,
+                'price'      => (float) $book['Price'],
+            ];
+        }
+
+        $_SESSION['cart'] = $validatedCart;
+
         $this->responseJson(['success' => true, 'message' => 'Cart synced to session']);
     }
     /**

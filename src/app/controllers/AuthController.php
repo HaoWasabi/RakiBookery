@@ -55,6 +55,9 @@ class AuthController extends BaseController
             }
         }
 
+        // Đổi session ID để chống session fixation
+        session_regenerate_id(true);
+
         // Lưu session nếu đăng nhập thành công
         $_SESSION['UserID'] = $user['UserID'];
         $_SESSION['Name'] = $user['Name'];
@@ -121,6 +124,9 @@ class AuthController extends BaseController
             $user = $this->authModel->login($email, $password);
 
             if ($user) {
+                // Đổi session ID để chống session fixation
+                session_regenerate_id(true);
+
                 $_SESSION['UserID'] = $user['UserID'];
                 $_SESSION['Name'] = $user['Name'];
                 $_SESSION['Role'] = $user['Role'];

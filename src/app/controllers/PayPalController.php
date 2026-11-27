@@ -40,8 +40,8 @@ class PayPalController extends BaseController
             CURLOPT_USERPWD        => PAYPAL_CLIENT_ID . ':' . PAYPAL_CLIENT_SECRET,
             CURLOPT_POSTFIELDS     => 'grant_type=client_credentials',
             CURLOPT_HTTPHEADER     => ['Accept: application/json'],
-            CURLOPT_SSL_VERIFYPEER => false, // tắt SSL verify cho môi trường local/XAMPP
-            CURLOPT_SSL_VERIFYHOST => false,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
             CURLOPT_TIMEOUT        => 30,
         ]);
         $response = curl_exec($ch);
@@ -109,8 +109,34 @@ class PayPalController extends BaseController
             }
         }
 
+        // Tính lại giá từ database — không tin giá lưu trong session
+        require_once ROOT_PATH . '/app/models/Book.php';
+        $bookModel = new Book();
+        $recalculatedCart = [];
+
+        foreach ($_SESSION['cart'] as $item) {
+            $productId = (int) ($item['product_id'] ?? 0);
+            $quantity  = (int) ($item['quantity']   ?? 0);
+            if ($productId <= 0 || $quantity <= 0) continue;
+
+            $book = $bookModel->getAvailableBookById($productId);
+            if (!$book) {
+                throw new RuntimeException('Sản phẩm không còn bán: ID ' . $productId);
+            }
+
+            $recalculatedCart[] = [
+                'product_id' => $productId,
+                'quantity'   => $quantity,
+                'price'      => (float) $book['Price'],
+            ];
+        }
+
+        if (empty($recalculatedCart)) {
+            throw new RuntimeException('Giỏ hàng không hợp lệ.');
+        }
+
         // Tính tổng tiền
-        $subtotal = array_reduce($_SESSION['cart'], function ($sum, $item) {
+        $subtotal = array_reduce($recalculatedCart, function ($sum, $item) {
             return $sum + ($item['quantity'] * $item['price']);
         }, 0);
 
@@ -132,7 +158,7 @@ class PayPalController extends BaseController
         // Lấy PaymentMethodID cho PayPal
         $paymentMethodId = (int)($_POST['payment_method_id'] ?? 0);
 
-        return compact('userId', 'addressId', 'subtotal', 'totalAmount', 'promoId', 'paymentMethodId');
+        return compact('userId', 'addressId', 'subtotal', 'totalAmount', 'promoId', 'paymentMethodId', 'recalculatedCart');
     }
 
     // -----------------------------------------------------------------------
@@ -147,7 +173,7 @@ class PayPalController extends BaseController
             'totalAmount'     => $orderData['totalAmount'],
             'promoId'         => $orderData['promoId'],
             'paymentMethodId' => $orderData['paymentMethodId'],
-            'cart'            => $_SESSION['cart'],
+            'cart'            => $orderData['recalculatedCart'],
         ];
     }
 
@@ -204,8 +230,8 @@ class PayPalController extends BaseController
                     'PayPal-Request-Id: raki-' . uniqid(),
                 ],
                 CURLOPT_POSTFIELDS     => json_encode($payload),
-                CURLOPT_SSL_VERIFYPEER => false,
-                CURLOPT_SSL_VERIFYHOST => false,
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_SSL_VERIFYHOST => 2,
                 CURLOPT_TIMEOUT        => 30,
             ]);
 
@@ -258,6 +284,16 @@ class PayPalController extends BaseController
             return;
         }
 
+        // Idempotency guard: kiểm tra paypalOrderId đã xử lý thành công chưa
+        if (isset($_SESSION['paypal_processed'][$paypalOrderId])) {
+            $this->responseJson([
+                'success' => true,
+                'message' => 'Thanh toán PayPal thành công!',
+                'orderId' => $_SESSION['paypal_processed'][$paypalOrderId],
+            ]);
+            return;
+        }
+
         try {
             $accessToken = $this->getAccessToken();
 
@@ -271,8 +307,8 @@ class PayPalController extends BaseController
                     'Authorization: Bearer ' . $accessToken,
                 ],
                 CURLOPT_POSTFIELDS     => '{}',
-                CURLOPT_SSL_VERIFYPEER => false,
-                CURLOPT_SSL_VERIFYHOST => false,
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_SSL_VERIFYHOST => 2,
                 CURLOPT_TIMEOUT        => 30,
             ]);
             $response = curl_exec($ch);
@@ -286,34 +322,51 @@ class PayPalController extends BaseController
                 throw new RuntimeException('Thanh toán PayPal thất bại. Vui lòng thử lại.');
             }
 
-            // Thanh toán thành công → tạo đơn hàng trong DB
-            $orderId = $this->orderModel->createOrder(
-                $checkout['userId'],
-                $checkout['totalAmount'],
-                $checkout['addressId'],
-                $checkout['paymentMethodId'],
-                $checkout['promoId'],
-                $checkout['subtotal']
-            );
-
-            if (!$orderId) {
-                // Capture đã thành công nhưng DB lỗi — log để xử lý thủ công
-                error_log('PayPal capture OK nhưng createOrder thất bại. PayPal Order ID: ' . $paypalOrderId);
-                throw new RuntimeException('Thanh toán thành công nhưng có lỗi khi lưu đơn hàng. Vui lòng liên hệ hỗ trợ.');
-            }
-
-            // Lưu chi tiết đơn hàng
-            foreach ($checkout['cart'] as $item) {
-                $this->orderDetailModel->createOrderDetail(
-                    $orderId,
-                    $item['product_id'],
-                    $item['quantity'],
-                    $item['price']
+            // Capture thành công — lưu toàn bộ đơn hàng trong một transaction
+            $this->orderModel->beginTransaction();
+            try {
+                $orderId = $this->orderModel->createOrder(
+                    $checkout['userId'],
+                    $checkout['totalAmount'],
+                    $checkout['addressId'],
+                    $checkout['paymentMethodId'],
+                    $checkout['promoId'],
+                    $checkout['subtotal']
                 );
+
+                if (!$orderId) {
+                    throw new RuntimeException('createOrder trả về false.');
+                }
+
+                foreach ($checkout['cart'] as $item) {
+                    $ok = $this->orderDetailModel->createOrderDetail(
+                        $orderId,
+                        $item['product_id'],
+                        $item['quantity'],
+                        $item['price']
+                    );
+                    if (!$ok) {
+                        throw new RuntimeException('createOrderDetail thất bại, sản phẩm ID ' . $item['product_id']);
+                    }
+                }
+
+                $this->orderModel->updateOrderStatus($orderId, 'pending');
+                $this->orderModel->commit();
+            } catch (RuntimeException $dbEx) {
+                $this->orderModel->rollBack();
+                // Tiền đã capture nhưng DB lỗi — log đầy đủ để đối soát thủ công
+                error_log(sprintf(
+                    'PAYPAL_DB_FAILURE | PayPalOrderID=%s | UserID=%d | Amount=%.2f | Error=%s',
+                    $paypalOrderId,
+                    $checkout['userId'],
+                    $checkout['totalAmount'],
+                    $dbEx->getMessage()
+                ));
+                throw new RuntimeException('Thanh toán thành công nhưng có lỗi khi lưu đơn hàng. Vui lòng liên hệ hỗ trợ với mã giao dịch: ' . $paypalOrderId);
             }
 
-            // Cập nhật trạng thái đơn hàng sang 'pending' vì đã thanh toán qua PayPal
-            $this->orderModel->updateOrderStatus($orderId, 'pending');
+            // Đánh dấu đã xử lý để chống double-submit trong cùng session
+            $_SESSION['paypal_processed'][$paypalOrderId] = $orderId;
 
             // Thông báo SNS cho admin
             $this->snsService->notifyNewOrder($orderId, $checkout['totalAmount'], 'PayPal');

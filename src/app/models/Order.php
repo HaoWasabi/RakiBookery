@@ -16,6 +16,11 @@ class Order
         }
     }
 
+    // Transaction helpers dùng cho controller
+    public function beginTransaction(): void   { $this->conn->beginTransaction(); }
+    public function commit(): void             { $this->conn->commit(); }
+    public function rollBack(): void           { if ($this->conn->inTransaction()) $this->conn->rollBack(); }
+
     // 1. Hàm tạo đơn hàng
     public function createOrder($userId, $totalAmount, $addressId, $paymentMethodId, $promoId = null, $originalAmount = null)
     {

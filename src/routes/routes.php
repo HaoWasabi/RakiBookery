@@ -82,53 +82,6 @@ elseif ($requestUri === "/paypal/create-order" && $_SERVER['REQUEST_METHOD'] ===
 } elseif ($requestUri === "/paypal/capture-order" && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $paypalController->captureOrder();
 }
-// DEBUG: kiểm tra session và PayPal config (XÓA sau khi debug xong)
-elseif ($requestUri === "/debug/paypal") {
-    header('Content-Type: application/json');
-    require_once ROOT_PATH . '/config/paypal.php';
-
-    $result = [
-        'session_id'       => session_id(),
-        'session_cart'     => !empty($_SESSION['cart']) ? count($_SESSION['cart']) . ' items' : 'TRỐNG',
-        'session_user'     => $_SESSION['UserID'] ?? 'CHƯA ĐĂNG NHẬP',
-        'paypal_mode'      => PAYPAL_MODE,
-        'paypal_client_id' => PAYPAL_CLIENT_ID ? substr(PAYPAL_CLIENT_ID, 0, 8) . '...' : 'CHƯA CẤU HÌNH',
-        'paypal_api_base'  => PAYPAL_API_BASE,
-        'curl_enabled'     => function_exists('curl_init') ? 'YES' : 'NO',
-        'token_test'       => null,
-        'token_error'      => null,
-    ];
-
-    // Thử lấy token luôn
-    if (function_exists('curl_init') && PAYPAL_CLIENT_ID) {
-        $ch = curl_init(PAYPAL_API_BASE . '/v1/oauth2/token');
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST           => true,
-            CURLOPT_USERPWD        => PAYPAL_CLIENT_ID . ':' . PAYPAL_CLIENT_SECRET,
-            CURLOPT_POSTFIELDS     => 'grant_type=client_credentials',
-            CURLOPT_HTTPHEADER     => ['Accept: application/json'],
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => false,
-            CURLOPT_TIMEOUT        => 10,
-        ]);
-        $resp     = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlErr  = curl_error($ch);
-        curl_close($ch);
-
-        if ($curlErr) {
-            $result['token_error'] = 'cURL error: ' . $curlErr;
-        } elseif ($httpCode === 200) {
-            $result['token_test'] = 'OK - HTTP 200';
-        } else {
-            $result['token_error'] = 'HTTP ' . $httpCode . ': ' . $resp;
-        }
-    }
-
-    echo json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-    exit;
-}
 // Chat proxy route (tránh CORS khi gọi Lambda từ browser)
 elseif ($requestUri === "/api/chat" && $_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json; charset=utf-8');
@@ -156,8 +109,8 @@ elseif ($requestUri === "/api/chat" && $_SERVER['REQUEST_METHOD'] === 'POST') {
         CURLOPT_POSTFIELDS     => $payload,
         CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
         CURLOPT_TIMEOUT        => 60,
-        CURLOPT_SSL_VERIFYPEER => false,
-        CURLOPT_SSL_VERIFYHOST => false,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_SSL_VERIFYHOST => 2,
     ]);
 
     $response  = curl_exec($ch);
