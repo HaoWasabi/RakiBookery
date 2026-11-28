@@ -1,10 +1,12 @@
 <?php
+
 require_once ROOT_PATH . '/app/models/Category.php';
 require_once ROOT_PATH . '/app/models/Book.php';
 require_once ROOT_PATH . '/app/models/MockBookData.php';
 require_once ROOT_PATH . '/app/models/User.php';
 require_once ROOT_PATH . '/app/models/PaymentMethod.php';
 require_once ROOT_PATH . '/app/controllers/BookController.php';
+
 class ClientController extends BaseController
 {
     private $data = [];
@@ -13,18 +15,27 @@ class ClientController extends BaseController
     private $userModel;
     private $orderModel;
     private $paymentMethodModel;
+
     public function __construct()
     {
-        $this->categoryModel  = new Category();
+        $this->categoryModel = new Category();
         $this->bookController = new BookController();
-        $this->userModel      = new User();
-        $this->orderModel     = new Order();
+        $this->userModel = new User();
+        $this->orderModel = new Order();
         $this->paymentMethodModel = new PaymentMethod();
+    }
+
+    private function isAdminLoggedIn(): bool
+    {
+        return !empty($_SESSION['UserID'])
+            && ($_SESSION['Role'] ?? '') === 'admin';
     }
 
     public function index()
     {
-        $this->data['bestSellerBooks'] = $this->bookController->getTopBestSellingBooks(4);
+        $this->data['bestSellerBooks'] =
+            $this->bookController->getTopBestSellingBooks(4);
+
         $this->renderView('home', 'RakiBookery');
     }
 
@@ -37,16 +48,27 @@ class ClientController extends BaseController
 
     public function productDetail()
     {
-        $this->data['book'] = $this->bookController->getAvailableBookById($_GET['id']);
+        $this->data['book'] =
+            $this->bookController->getAvailableBookById($_GET['id']);
+
         if (!$this->data['book']) {
             $this->notFound();
             return;
         }
-        $this->renderView('product-detail', 'Sách ' . $this->data['book']['Name'], true, false, [
-            ['title' => 'Cửa hàng', 'url' => '/shop'],
-            // ['title' => 'Chi tiết sản phẩm', 'url' => '#']
-            ['title' => 'Sách ' . $this->data['book']['Name'], 'url' => '#']
-        ]);
+
+        $this->renderView(
+            'product-detail',
+            'Sách ' . $this->data['book']['Name'],
+            true,
+            false,
+            [
+                ['title' => 'Cửa hàng', 'url' => '/shop'],
+                [
+                    'title' => 'Sách ' . $this->data['book']['Name'],
+                    'url' => '#'
+                ]
+            ]
+        );
     }
 
     public function cart()
@@ -60,16 +82,18 @@ class ClientController extends BaseController
     {
         $this->checkLogin();
 
-        $this->data['user'] = $this->userModel->getUserById($_SESSION['UserID']);
+        $this->data['user'] =
+            $this->userModel->getUserById($_SESSION['UserID']);
 
-        // Get payment methods
-        require_once ROOT_PATH . '/app/models/PaymentMethod.php';
-
-        $this->data['payment_methods'] = $this->paymentMethodModel->getAllPaymentMethods();
+        $this->data['payment_methods'] =
+            $this->paymentMethodModel->getAllPaymentMethods();
 
         $this->renderView('checkout', 'Thanh toán', true, false, [
             ['title' => 'Giỏ hàng', 'url' => '/cart'],
-            ['title' => 'Thanh toán', 'url' => '/cart/checkout']
+            [
+                'title' => 'Thanh toán',
+                'url' => '/cart/checkout'
+            ]
         ]);
     }
 
@@ -77,46 +101,75 @@ class ClientController extends BaseController
     {
         $this->checkLogin();
 
-        $this->data['orders'] = $this->orderModel->getFilteredOrdersOfCustomer($_SESSION['UserID']);
+        $this->data['orders'] =
+            $this->orderModel->getFilteredOrdersOfCustomer(
+                $_SESSION['UserID']
+            );
 
-        $this->renderView('order-history', 'Lịch sử đơn hàng', true, false, [
-            ['title' => 'Tài khoản', 'url' => '/my-account'],
-            ['title' => 'Lịch sử đơn hàng', 'url' => '/my-account/order-history']
-        ]);
+        $this->renderView(
+            'order-history',
+            'Lịch sử đơn hàng',
+            true,
+            false,
+            [
+                ['title' => 'Tài khoản', 'url' => '/my-account'],
+                [
+                    'title' => 'Lịch sử đơn hàng',
+                    'url' => '/my-account/order-history'
+                ]
+            ]
+        );
     }
 
     public function orderDetail()
     {
         $this->checkLogin();
 
-        $this->data['order'] = $this->orderModel->getOrderById($_GET['id'], $_SESSION['UserID']);
+        $this->data['order'] = $this->orderModel->getOrderById(
+            $_GET['id'],
+            $_SESSION['UserID']
+        );
 
         if (!$this->data['order']) {
             $this->notFound();
             return;
         }
 
-        $this->renderView('order-detail', 'Chi tiết đơn hàng', true, false, [
-            ['title' => 'Tài khoản', 'url' => '/my-account'],
-            ['title' => 'Lịch sử đơn hàng', 'url' => '/my-account/order-history'],
+        $this->renderView(
+            'order-detail',
+            'Chi tiết đơn hàng',
+            true,
+            false,
             [
-                'title' => 'Chi tiết đơn hàng '
-                // . $this->data['order']['OrderID']
-                ,
-                'url' => '#'
+                ['title' => 'Tài khoản', 'url' => '/my-account'],
+                [
+                    'title' => 'Lịch sử đơn hàng',
+                    'url' => '/my-account/order-history'
+                ],
+                [
+                    'title' => 'Chi tiết đơn hàng',
+                    'url' => '#'
+                ]
             ]
-        ]);
+        );
     }
 
     public function myAccount()
     {
         $this->checkLogin();
 
-        $this->data['user'] = $this->userModel->getUserById($_SESSION['UserID']);
+        $this->data['user'] =
+            $this->userModel->getUserById($_SESSION['UserID']);
 
-        $this->renderView('my-account', 'Tài khoản của tôi', true, false, [
-            ['title' => 'Tài khoản', 'url' => '/my-account']
-        ]);
+        $this->renderView(
+            'my-account',
+            'Tài khoản của tôi',
+            true,
+            false,
+            [
+                ['title' => 'Tài khoản', 'url' => '/my-account']
+            ]
+        );
     }
 
     public function aboutUs()
@@ -136,28 +189,53 @@ class ClientController extends BaseController
     public function notFound()
     {
         http_response_code(404);
-        $this->renderView('../error/404', '404 - Trang không tìm thấy', false, false, [
-            ['title' => 'Lỗi 404', 'url' => '#']
-        ]);
+
+        // Hiển thị trang 404 dành cho admin và giữ phiên đăng nhập.
+        if ($this->isAdminLoggedIn()) {
+            include ROOT_PATH . '/app/views/admin/error/404.php';
+            return;
+        }
+
+        $this->renderView(
+            '../error/404',
+            '404 - Trang không tìm thấy',
+            false,
+            false,
+            [
+                ['title' => 'Lỗi 404', 'url' => '#']
+            ]
+        );
     }
 
     private function checkLogin(): void
     {
+        // Điều hướng admin về khu vực quản trị.
+        if ($this->isAdminLoggedIn()) {
+            $this->redirect('/admin/dashboard');
+        }
+
         if (!isset($_SESSION['UserID'])) {
             $this->redirect('/');
         }
     }
+
     public function syncCart()
     {
-        if ($_SERVER["REQUEST_METHOD"] !== "POST") {
-            $this->responseJson(['success' => false, 'message' => 'Invalid request method']);
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->responseJson([
+                'success' => false,
+                'message' => 'Invalid request method'
+            ]);
             return;
         }
 
         $data = $this->getRequestData();
 
         if (!isset($data['cart']) || !is_array($data['cart'])) {
-            $this->responseJson(['success' => false, 'message' => 'Invalid cart data']);
+            $this->responseJson([
+                'success' => false,
+                'message' => 'Invalid cart data'
+            ]);
             return;
         }
 
@@ -165,34 +243,40 @@ class ClientController extends BaseController
         $validatedCart = [];
 
         foreach ($data['cart'] as $item) {
-            $productId = isset($item['product_id']) ? (int) $item['product_id'] : 0;
-            $quantity  = isset($item['quantity'])   ? (int) $item['quantity']   : 0;
+            $productId = isset($item['product_id'])
+                ? (int) $item['product_id']
+                : 0;
+
+            $quantity = isset($item['quantity'])
+                ? (int) $item['quantity']
+                : 0;
 
             if ($productId <= 0 || $quantity <= 0) {
                 continue;
             }
 
-            // Tra giá và kiểm tra sách còn bán từ database — không tin giá từ client
+            // Xác thực thông tin sản phẩm từ database.
             $book = $bookModel->getAvailableBookById($productId);
+
             if (!$book) {
-                continue; // Sách không tồn tại hoặc đã ngừng bán
+                continue;
             }
 
             $validatedCart[] = [
                 'product_id' => $productId,
-                'quantity'   => $quantity,
-                'price'      => (float) $book['Price'],
+                'quantity' => $quantity,
+                'price' => (float) $book['Price']
             ];
         }
 
         $_SESSION['cart'] = $validatedCart;
 
-        $this->responseJson(['success' => true, 'message' => 'Cart synced to session']);
+        $this->responseJson([
+            'success' => true,
+            'message' => 'Cart synced to session'
+        ]);
     }
-    /**
-     * Presign ImageURL cho tất cả sách trong mảng để JS dùng được.
-     * Áp dụng cho cả mảng sách lẫn object sách đơn lẻ.
-     */
+
     private function presignBooks(array &$books): void
     {
         foreach ($books as &$book) {
@@ -209,36 +293,47 @@ class ClientController extends BaseController
         }
     }
 
-    private function renderView($viewName, $page_title, $show_breadcrumb = false, $show_nav = true, $breadcrumbs = [])
-    {
-        if (isset($_SESSION['UserID']) && $_SESSION['Role'] == 'admin') {
-            header('Location: /logout');
-            exit();
+    private function renderView(
+        $viewName,
+        $page_title,
+        $show_breadcrumb = false,
+        $show_nav = true,
+        $breadcrumbs = []
+    ) {
+        // Giữ phiên admin và điều hướng về Dashboard.
+        if ($this->isAdminLoggedIn()) {
+            $this->redirect('/admin/dashboard');
         }
 
-        $this->data['categories'] = $this->categoryModel->getAll();
+        $this->data['categories'] =
+            $this->categoryModel->getAll();
 
         $books = $this->bookController->getAllAvailableBooks();
+
         $this->presignBooks($books);
+
         $this->data['books'] = $books;
 
-        // Presign bestSellerBooks nếu có
         if (!empty($this->data['bestSellerBooks'])) {
             $this->presignBooks($this->data['bestSellerBooks']);
         }
 
-        // Presign single book nếu có (product-detail)
-        if (!empty($this->data['book']) && is_array($this->data['book']) && isset($this->data['book']['BookID'])) {
+        if (
+            !empty($this->data['book'])
+            && is_array($this->data['book'])
+            && isset($this->data['book']['BookID'])
+        ) {
             $this->presignBook($this->data['book']);
         }
 
         extract($this->data);
 
         ob_start();
-        include(ROOT_PATH . "/app/views/client/{$viewName}.php");
+
+        include ROOT_PATH . "/app/views/client/{$viewName}.php";
+
         $content = ob_get_clean();
 
-        include(ROOT_PATH . '/app/views/client/index.php');
+        include ROOT_PATH . '/app/views/client/index.php';
     }
-
 }
