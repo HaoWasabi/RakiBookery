@@ -15,8 +15,8 @@ class AuthController extends BaseController
     {
         $this->requirePost();
 
-        $data = $this->getRequestData();
-        $email = $data['email'] ?? '';
+        $data     = $this->getRequestData();
+        $email    = $data['email']    ?? '';
         $password = $data['password'] ?? '';
 
         $user = $this->authModel->login($email, $password);
@@ -44,7 +44,7 @@ class AuthController extends BaseController
                     'success' => false,
                     'message' => 'Email hoặc mật khẩu không chính xác'
                 ]);
-                return; // *** SỬA: thêm return ở đây, bản gốc thiếu return gây tiếp tục chạy xuống ***
+                return;
             }
         } else if ($_SERVER['REQUEST_URI'] === "/auth/login") {
             if ($isAdmin) {
@@ -56,29 +56,34 @@ class AuthController extends BaseController
             }
         }
 
-        // *** SỬA CHÍNH: đổi true → false ***
-        // true  = xóa file session cũ NGAY LẬP TỨC sau khi tạo ID mới.
-        //         Browser thường gửi nhiều request song song khi load trang
-        //         (fetch JS, CSS, favicon, API...). Những request đó vẫn mang
-        //         session ID cũ — nhưng file đã bị xóa → PHP tạo session mới
-        //         rỗng → không có UserID → checkAdminAuth() redirect về login.
-        // false = giữ nguyên file session cũ, chỉ cấp ID mới cho browser.
-        //         File cũ sẽ tự bị dọn khi gc chạy → an toàn hơn nhiều.
+        // *** SỬA: đổi true → false ***
+        // Lý do giữ false: session_regenerate_id(true) xóa file session cũ ngay
+        // lập tức. Nếu browser gửi request song song với session ID cũ, PHP sẽ
+        // tạo session mới rỗng vì file cũ đã bị xóa → mất UserID → bị văng login.
         session_regenerate_id(false);
 
-        // Lưu session nếu đăng nhập thành công
+        // *** SỬA: gọi session_write_close() trước khi trả response ***
+        // Đảm bảo PHP ghi session xuống file /tmp/php_sessions NGAY LẬP TỨC
+        // trước khi script kết thúc. Nếu không, có trường hợp PHP chưa flush
+        // session xuống disk mà browser đã redirect và gửi request mới → đọc
+        // session trống.
         $_SESSION['UserID'] = $user['UserID'];
         $_SESSION['Name']   = $user['Name'];
         $_SESSION['Email']  = $user['Email'];
         $_SESSION['Role']   = $user['Role'];
 
+        // Phải set cart trước khi write_close vì session.php khởi tạo cart=[]
+        // cho session mới, nhưng session mới này chưa có cart nên không cần set lại.
+
+        session_write_close(); // ← flush session xuống disk ngay
+
         // Check for cart cookie and set a flag for client-side to sync
-        if ($_SESSION['Role'] == 'user') {
+        if ($user['Role'] == 'user') {
             $hasCartCookie  = false;
             $cartCookieName = 'user_cart_' . $user['UserID'];
             if (isset($_COOKIE[$cartCookieName])) {
-                $hasCartCookie               = true;
-                $_SESSION['has_cart_cookie'] = true;
+                // Không thể set session sau write_close, dùng flag tạm trong response
+                $hasCartCookie = true;
             }
 
             $this->responseJson([
@@ -96,17 +101,14 @@ class AuthController extends BaseController
 
     public function register()
     {
-        // Kiểm tra phương thức POST
         $this->requirePost();
 
-        // Lấy dữ liệu từ request
-        $data = $this->getRequestData();
+        $data     = $this->getRequestData();
         $fullName = $data['fullName'] ?? '';
         $email    = $data['email']    ?? '';
         $phone    = $data['phone']    ?? '';
         $password = $data['password'] ?? '';
 
-        // Kiểm tra email đã tồn tại chưa
         if ($this->authModel->emailExists($email)) {
             $this->responseJson([
                 'success' => false,
@@ -115,7 +117,6 @@ class AuthController extends BaseController
             return;
         }
 
-        // Kiểm tra số điện thoại đã tồn tại chưa
         if ($phone && $this->authModel->phoneExists($phone)) {
             $this->responseJson([
                 'success' => false,
@@ -124,20 +125,19 @@ class AuthController extends BaseController
             return;
         }
 
-        // Đăng ký người dùng mới
         $result = $this->authModel->register($fullName, $email, $password, $phone);
 
         if ($result) {
-            // Đăng nhập người dùng sau khi đăng ký thành công
             $user = $this->authModel->login($email, $password);
 
             if ($user) {
-                // Đổi session ID để chống session fixation
-                session_regenerate_id(false); // *** SỬA: đồng bộ với hàm login() ở trên ***
+                session_regenerate_id(false); // *** SỬA: đồng bộ với login() ***
 
                 $_SESSION['UserID'] = $user['UserID'];
                 $_SESSION['Name']   = $user['Name'];
                 $_SESSION['Role']   = $user['Role'];
+
+                session_write_close(); // *** SỬA: flush session ngay ***
             }
 
             $this->responseJson([
@@ -155,9 +155,8 @@ class AuthController extends BaseController
     public function logout()
     {
         $redirectUrl = $_SERVER['REQUEST_URI'] === "/admin/logout" ? "/admin/login" : "/";
-        $userId = $_SESSION['UserID'] ?? null;
+        $userId      = $_SESSION['UserID'] ?? null;
 
-        // Lưu cart vào cookie trước khi đăng xuất nếu có userID
         if (isset($_SESSION['Role']) && $_SESSION['Role'] == 'user' && $userId) {
             $cartCookieName = 'user_cart_' . $userId;
             if (isset($_SESSION['cart'])) {
@@ -178,16 +177,12 @@ class AuthController extends BaseController
                     }
                 }
 
-                $cartData = json_encode($transformedCart);
-                // Cookie hết hạn sau 30 ngày
-                setcookie($cartCookieName, $cartData, time() + (86400 * 30), '/');
+                setcookie($cartCookieName, json_encode($transformedCart), time() + (86400 * 30), '/');
             }
         }
 
-        // Xóa tất cả dữ liệu session
         $_SESSION = array();
 
-        // Xóa cookie phiên
         if (ini_get("session.use_cookies")) {
             $params = session_get_cookie_params();
             setcookie(
@@ -201,10 +196,8 @@ class AuthController extends BaseController
             );
         }
 
-        // Hủy phiên
         session_destroy();
 
-        // Chuyển hướng
         $this->redirect($redirectUrl);
     }
 
@@ -224,7 +217,6 @@ class AuthController extends BaseController
         if (isset($_COOKIE[$cartCookieName])) {
             $cartData = $_COOKIE[$cartCookieName];
 
-            // Xóa cookie sau khi đã lấy dữ liệu
             setcookie($cartCookieName, '', time() - 3600, '/');
 
             $cartItems = json_decode($cartData, true);
