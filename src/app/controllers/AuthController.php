@@ -25,8 +25,8 @@ class AuthController extends BaseController
         if (isset($user['error'])) {
             $message = match ($user['error']) {
                 'invalid_credentials' => 'Email hoặc mật khẩu không chính xác',
-                'account_locked' => 'Tài khoản của bạn đã bị khóa',
-                default => 'Đã xảy ra lỗi, vui lòng thử lại'
+                'account_locked'      => 'Tài khoản của bạn đã bị khóa',
+                default               => 'Đã xảy ra lỗi, vui lòng thử lại'
             };
 
             $this->responseJson([
@@ -44,6 +44,7 @@ class AuthController extends BaseController
                     'success' => false,
                     'message' => 'Email hoặc mật khẩu không chính xác'
                 ]);
+                return; // *** SỬA: thêm return ở đây, bản gốc thiếu return gây tiếp tục chạy xuống ***
             }
         } else if ($_SERVER['REQUEST_URI'] === "/auth/login") {
             if ($isAdmin) {
@@ -55,27 +56,34 @@ class AuthController extends BaseController
             }
         }
 
-        // Đổi session ID để chống session fixation
-        session_regenerate_id(true);
+        // *** SỬA CHÍNH: đổi true → false ***
+        // true  = xóa file session cũ NGAY LẬP TỨC sau khi tạo ID mới.
+        //         Browser thường gửi nhiều request song song khi load trang
+        //         (fetch JS, CSS, favicon, API...). Những request đó vẫn mang
+        //         session ID cũ — nhưng file đã bị xóa → PHP tạo session mới
+        //         rỗng → không có UserID → checkAdminAuth() redirect về login.
+        // false = giữ nguyên file session cũ, chỉ cấp ID mới cho browser.
+        //         File cũ sẽ tự bị dọn khi gc chạy → an toàn hơn nhiều.
+        session_regenerate_id(false);
 
         // Lưu session nếu đăng nhập thành công
         $_SESSION['UserID'] = $user['UserID'];
-        $_SESSION['Name'] = $user['Name'];
-        $_SESSION['Email'] = $user['Email'];
-        $_SESSION['Role'] = $user['Role'];
+        $_SESSION['Name']   = $user['Name'];
+        $_SESSION['Email']  = $user['Email'];
+        $_SESSION['Role']   = $user['Role'];
 
         // Check for cart cookie and set a flag for client-side to sync
-        if($_SESSION['Role'] == 'user'){
-            $hasCartCookie = false;
+        if ($_SESSION['Role'] == 'user') {
+            $hasCartCookie  = false;
             $cartCookieName = 'user_cart_' . $user['UserID'];
             if (isset($_COOKIE[$cartCookieName])) {
-                $hasCartCookie = true;
+                $hasCartCookie               = true;
                 $_SESSION['has_cart_cookie'] = true;
             }
-    
+
             $this->responseJson([
-                'success' => true,
-                'message' => 'Đăng nhập thành công',
+                'success'         => true,
+                'message'         => 'Đăng nhập thành công',
                 'has_cart_cookie' => $hasCartCookie
             ]);
         } else {
@@ -94,8 +102,8 @@ class AuthController extends BaseController
         // Lấy dữ liệu từ request
         $data = $this->getRequestData();
         $fullName = $data['fullName'] ?? '';
-        $email = $data['email'] ?? '';
-        $phone = $data['phone'] ?? '';
+        $email    = $data['email']    ?? '';
+        $phone    = $data['phone']    ?? '';
         $password = $data['password'] ?? '';
 
         // Kiểm tra email đã tồn tại chưa
@@ -125,11 +133,11 @@ class AuthController extends BaseController
 
             if ($user) {
                 // Đổi session ID để chống session fixation
-                session_regenerate_id(true);
+                session_regenerate_id(false); // *** SỬA: đồng bộ với hàm login() ở trên ***
 
                 $_SESSION['UserID'] = $user['UserID'];
-                $_SESSION['Name'] = $user['Name'];
-                $_SESSION['Role'] = $user['Role'];
+                $_SESSION['Name']   = $user['Name'];
+                $_SESSION['Role']   = $user['Role'];
             }
 
             $this->responseJson([
@@ -151,23 +159,20 @@ class AuthController extends BaseController
 
         // Lưu cart vào cookie trước khi đăng xuất nếu có userID
         if (isset($_SESSION['Role']) && $_SESSION['Role'] == 'user' && $userId) {
-            // Lưu cart vào cookie
             $cartCookieName = 'user_cart_' . $userId;
-            // Lấy cart từ session nếu có
             if (isset($_SESSION['cart'])) {
                 $cartItems = $_SESSION['cart'];
 
-                
                 $transformedCart = [];
                 foreach ($cartItems as $item) {
                     if (isset($item['product_id']) && isset($item['quantity'])) {
                         $transformedCart[] = [
-                            'id' => (int) $item['product_id'],
+                            'id'       => (int) $item['product_id'],
                             'quantity' => (int) $item['quantity']
                         ];
                     } else if (isset($item['id']) && isset($item['quantity'])) {
                         $transformedCart[] = [
-                            'id' => (int) $item['id'],
+                            'id'       => (int) $item['id'],
                             'quantity' => (int) $item['quantity']
                         ];
                     }
@@ -199,7 +204,7 @@ class AuthController extends BaseController
         // Hủy phiên
         session_destroy();
 
-        // Chuyển hướng về trang chủ
+        // Chuyển hướng
         $this->redirect($redirectUrl);
     }
 
@@ -213,7 +218,7 @@ class AuthController extends BaseController
             return;
         }
 
-        $userId = $_SESSION['UserID'];
+        $userId         = $_SESSION['UserID'];
         $cartCookieName = 'user_cart_' . $userId;
 
         if (isset($_COOKIE[$cartCookieName])) {
@@ -222,21 +227,19 @@ class AuthController extends BaseController
             // Xóa cookie sau khi đã lấy dữ liệu
             setcookie($cartCookieName, '', time() - 3600, '/');
 
-            // Chuyển đổi từ chuỗi JSON thành mảng PHP
             $cartItems = json_decode($cartData, true);
-
 
             $transformedCart = [];
             if (is_array($cartItems)) {
                 foreach ($cartItems as $item) {
                     if (isset($item['product_id'])) {
                         $transformedCart[] = [
-                            'id' => (int) $item['product_id'],
+                            'id'       => (int) $item['product_id'],
                             'quantity' => (int) $item['quantity']
                         ];
                     } else if (isset($item['id'])) {
                         $transformedCart[] = [
-                            'id' => (int) $item['id'],
+                            'id'       => (int) $item['id'],
                             'quantity' => (int) $item['quantity']
                         ];
                     }
@@ -245,7 +248,7 @@ class AuthController extends BaseController
 
             $this->responseJson([
                 'success' => true,
-                'cart' => $transformedCart
+                'cart'    => $transformedCart
             ]);
         } else {
             $this->responseJson([
