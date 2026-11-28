@@ -7,6 +7,11 @@ class BaseController
     {
         http_response_code($statusCode);
         header('Content-Type: application/json');
+        // *** THÊM: CloudFront không được cache JSON response ***
+        // Đặc biệt quan trọng với 401 — nếu cache thì mọi request sau
+        // (kể cả khi đã đăng nhập lại) vẫn nhận 401 cũ từ CloudFront.
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
         echo json_encode($data);
         exit;
     }
@@ -18,7 +23,7 @@ class BaseController
             $this->responseJson([
                 'success' => false,
                 'message' => 'Phương thức không hợp lệ'
-            ], 405); // 405 Method Not Allowed
+            ], 405);
         }
     }
 
@@ -31,8 +36,16 @@ class BaseController
         }
         return $data;
     }
+
     protected function redirect($url)
     {
+        // *** THÊM: CloudFront không được cache redirect ***
+        // Nếu cache redirect 302 về /admin/login thì admin đăng nhập
+        // rồi truy cập /admin/dashboard vẫn bị redirect về login.
+        if (!headers_sent()) {
+            header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+            header('Pragma: no-cache');
+        }
         header('Location: ' . $url);
         exit;
     }

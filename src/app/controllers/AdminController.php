@@ -1,5 +1,4 @@
 <?php
-
 require_once ROOT_PATH . '/app/models/Category.php';
 require_once ROOT_PATH . '/app/models/Book.php';
 require_once ROOT_PATH . '/app/models/MockBookData.php';
@@ -13,7 +12,6 @@ require_once ROOT_PATH . '/app/controllers/BookController.php';
 class AdminController extends BaseController
 {
     private $data = [];
-
     private $categoryModel;
     private $bookModel;
     private $bookController;
@@ -35,20 +33,17 @@ class AdminController extends BaseController
         $this->data['paymentMethods'] =
             $this->paymentMethodModel->getAllPaymentMethods();
     }
-
     private function isAdminLoggedIn()
     {
         return !empty($_SESSION['UserID']) &&
             ($_SESSION['Role'] ?? '') === 'admin';
     }
-
     private function checkAdminAuth()
     {
         if (!$this->isAdminLoggedIn()) {
             $this->redirect('/admin/login');
         }
     }
-
     public function login()
     {
         if ($this->isAdminLoggedIn()) {
