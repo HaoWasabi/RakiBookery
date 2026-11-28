@@ -32,6 +32,22 @@ class Book
             return false;
         }
     }
+    // *** THÊM MỚI: Cộng lại tồn kho khi capture PayPal thất bại sau khi đã trừ ***
+    public function restoreStock(int $bookId, int $quantity): bool
+    {
+        try {
+            $stmt = $this->conn->prepare("
+                UPDATE book
+                SET Stock = Stock + ?
+                WHERE BookID = ? AND Status = 1
+            ");
+            $stmt->execute([$quantity, $bookId]);
+            return $stmt->rowCount() === 1;
+        } catch (PDOException $e) {
+            error_log('Lỗi hoàn tồn kho BookID=' . $bookId . ': ' . $e->getMessage());
+            return false;
+        }
+    }
 
     // Thêm sách mới
     public function createBook($name, $description, $price, $stock, $imageURL, $categoryID, $length, $weight, $dimensions, $language, $format, $author, $publisher, $releaseDate, $status)

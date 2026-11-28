@@ -21,14 +21,14 @@ class PayPalController extends BaseController
 
     public function __construct()
     {
-        $this->orderModel       = new Order();
-        $this->addressModel     = new Address();
-        $this->orderDetailModel = new OrderDetail();
-        $this->promoModel       = new Promo();
+        $this->orderModel         = new Order();
+        $this->addressModel       = new Address();
+        $this->orderDetailModel   = new OrderDetail();
+        $this->promoModel         = new Promo();
         $this->paymentMethodModel = new PaymentMethod();
-        $this->snsService       = new SnsService();
+        $this->snsService         = new SnsService();
         require_once ROOT_PATH . '/app/models/Book.php';
-        $this->bookModel        = new Book();
+        $this->bookModel          = new Book();
     }
 
     // -----------------------------------------------------------------------
@@ -47,8 +47,8 @@ class PayPalController extends BaseController
             CURLOPT_SSL_VERIFYHOST => 2,
             CURLOPT_TIMEOUT        => 30,
         ]);
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $response  = curl_exec($ch);
+        $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curlError = curl_error($ch);
         $curlErrno = curl_errno($ch);
         curl_close($ch);
@@ -60,7 +60,7 @@ class PayPalController extends BaseController
 
         if ($httpCode !== 200) {
             error_log('PayPal get token failed (' . $httpCode . '): ' . $response);
-            $body = json_decode($response, true);
+            $body   = json_decode($response, true);
             $detail = $body['error_description'] ?? $body['message'] ?? $response;
             throw new RuntimeException('Xác thực PayPal thất bại: ' . $detail);
         }
@@ -70,21 +70,19 @@ class PayPalController extends BaseController
     }
 
     // -----------------------------------------------------------------------
-    // Convert VND → USD (PayPal sandbox thường chỉ hỗ trợ USD)
+    // Convert VND → USD
     // -----------------------------------------------------------------------
     private function convertToPayPalAmount(float $vndAmount): string
     {
         if (PAYPAL_CURRENCY === 'VND') {
-            // Nếu tài khoản PayPal hỗ trợ VND, truyền thẳng
             return number_format($vndAmount, 0, '.', '');
         }
-        // Convert VND sang USD
         $usd = $vndAmount / PAYPAL_VND_TO_USD_RATE;
         return number_format($usd, 2, '.', '');
     }
 
     // -----------------------------------------------------------------------
-    // Chuẩn bị dữ liệu đơn hàng từ request (dùng chung cho cả create & capture)
+    // Chuẩn bị dữ liệu đơn hàng từ request
     // -----------------------------------------------------------------------
     private function prepareOrderData(): array
     {
@@ -94,7 +92,6 @@ class PayPalController extends BaseController
 
         $userId = $_SESSION['UserID'];
 
-        // Địa chỉ
         if (!empty($_POST['new_address'])) {
             $addressId = $this->addressModel->create(
                 $_POST['new_address'],
@@ -112,20 +109,16 @@ class PayPalController extends BaseController
             }
         }
 
-        // Tính lại giá từ database — không tin giá lưu trong session
-        $bookModel = $this->bookModel;
         $recalculatedCart = [];
-
         foreach ($_SESSION['cart'] as $item) {
             $productId = (int) ($item['product_id'] ?? 0);
             $quantity  = (int) ($item['quantity']   ?? 0);
             if ($productId <= 0 || $quantity <= 0) continue;
 
-            $book = $bookModel->getAvailableBookById($productId);
+            $book = $this->bookModel->getAvailableBookById($productId);
             if (!$book) {
                 throw new RuntimeException('Sản phẩm không còn bán: ID ' . $productId);
             }
-
             if ($book['Stock'] < $quantity) {
                 throw new RuntimeException('Sản phẩm "' . $book['Name'] . '" chỉ còn ' . $book['Stock'] . ' cuốn trong kho.');
             }
@@ -141,12 +134,10 @@ class PayPalController extends BaseController
             throw new RuntimeException('Giỏ hàng không hợp lệ.');
         }
 
-        // Tính tổng tiền
         $subtotal = array_reduce($recalculatedCart, function ($sum, $item) {
             return $sum + ($item['quantity'] * $item['price']);
         }, 0);
 
-        // Promo
         $promoId     = null;
         $totalAmount = $subtotal;
         $promoCode   = trim($_POST['promo_code'] ?? '');
@@ -161,14 +152,13 @@ class PayPalController extends BaseController
             $totalAmount = $subtotal - $discount;
         }
 
-        // Lấy PaymentMethodID cho PayPal
         $paymentMethodId = (int)($_POST['payment_method_id'] ?? 0);
 
         return compact('userId', 'addressId', 'subtotal', 'totalAmount', 'promoId', 'paymentMethodId', 'recalculatedCart');
     }
 
     // -----------------------------------------------------------------------
-    // Lưu thông tin checkout vào session để dùng khi capture
+    // Lưu thông tin checkout vào session
     // -----------------------------------------------------------------------
     private function storeCheckoutSession(array $orderData): void
     {
@@ -184,9 +174,79 @@ class PayPalController extends BaseController
     }
 
     // -----------------------------------------------------------------------
-    // STEP 1: Tạo PayPal Order (gọi từ frontend khi user click nút PayPal)
+    // *** MỚI: Hoàn tiền tự động qua PayPal Refund API ***
+    // Gọi khi capture OK nhưng ghi DB thất bại.
+    // Silent-fail: nếu refund cũng lỗi thì alert admin qua SNS.
+    // -----------------------------------------------------------------------
+    private function attemptAutoRefund(
+        string $paypalOrderId,
+        string $captureId,
+        string $accessToken,
+        float  $totalAmount
+    ): void {
+        try {
+            $ch = curl_init(PAYPAL_API_BASE . '/v2/payments/captures/' . $captureId . '/refund');
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST           => true,
+                CURLOPT_HTTPHEADER     => [
+                    'Content-Type: application/json',
+                    'Authorization: Bearer ' . $accessToken,
+                ],
+                CURLOPT_POSTFIELDS     => '{}',   // hoàn toàn bộ số tiền
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_SSL_VERIFYHOST => 2,
+                CURLOPT_TIMEOUT        => 30,
+            ]);
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode === 201) {
+                error_log(sprintf(
+                    'PAYPAL_AUTO_REFUND_OK | PayPalOrderID=%s | CaptureID=%s | Amount=%.2f',
+                    $paypalOrderId, $captureId, $totalAmount
+                ));
+            } else {
+                throw new RuntimeException('HTTP ' . $httpCode . ' — ' . $response);
+            }
+        } catch (\Throwable $e) {
+            // Refund thất bại → cần admin xử lý thủ công, gửi alert ngay
+            error_log(sprintf(
+                'PAYPAL_AUTO_REFUND_FAILED | PayPalOrderID=%s | CaptureID=%s | Error=%s',
+                $paypalOrderId, $captureId, $e->getMessage()
+            ));
+            $this->snsService->publish(
+                '[RakiBookery] ⚠️ Cần hoàn tiền PayPal thủ công',
+                "Capture thành công nhưng ghi DB thất bại VÀ hoàn tiền tự động cũng thất bại.\n\n"
+                . "- PayPal Order ID : {$paypalOrderId}\n"
+                . "- Capture ID      : {$captureId}\n"
+                . "- Số tiền         : " . number_format($totalAmount, 0, '.', ',') . " VND\n"
+                . "- Lỗi refund      : " . $e->getMessage() . "\n"
+                . "- Thời gian       : " . date('d/m/Y H:i:s')
+            );
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // *** MỚI: Cộng lại tồn kho cho các sản phẩm trong giỏ ***
+    // Gọi khi DB transaction rollback sau khi đã trừ stock.
+    // -----------------------------------------------------------------------
+    private function restoreStock(array $cart): void
+    {
+        foreach ($cart as $item) {
+            if (!$this->bookModel->restoreStock((int) $item['product_id'], (int) $item['quantity'])) {
+                error_log(sprintf(
+                    'RESTORE_STOCK_FAIL | BookID=%d | Qty=%d',
+                    $item['product_id'], $item['quantity']
+                ));
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // STEP 1: Tạo PayPal Order — không thay đổi so với bản cũ
     // POST /paypal/create-order
-    // Body: FormData (giống processCheckout)
     // -----------------------------------------------------------------------
     public function createOrder(): void
     {
@@ -199,25 +259,21 @@ class PayPalController extends BaseController
             $this->storeCheckoutSession($orderData);
 
             $accessToken = $this->getAccessToken();
+            $amountStr   = $this->convertToPayPalAmount($orderData['totalAmount']);
 
-            $amountStr = $this->convertToPayPalAmount($orderData['totalAmount']);
-
-            // Đảm bảo amount tối thiểu $0.01 USD
             if ((float)$amountStr <= 0) {
                 throw new RuntimeException('Số tiền thanh toán không hợp lệ.');
             }
 
             $payload = [
                 'intent'         => 'CAPTURE',
-                'purchase_units' => [
-                    [
-                        'amount'      => [
-                            'currency_code' => PAYPAL_CURRENCY === 'VND' ? 'USD' : PAYPAL_CURRENCY,
-                            'value'         => $amountStr,
-                        ],
-                        'description' => 'RakiBookery - Đặt hàng sách',
-                    ]
-                ],
+                'purchase_units' => [[
+                    'amount'      => [
+                        'currency_code' => PAYPAL_CURRENCY === 'VND' ? 'USD' : PAYPAL_CURRENCY,
+                        'value'         => $amountStr,
+                    ],
+                    'description' => 'RakiBookery - Đặt hàng sách',
+                ]],
                 'application_context' => [
                     'brand_name'          => 'RakiBookery',
                     'landing_page'        => 'NO_PREFERENCE',
@@ -240,7 +296,6 @@ class PayPalController extends BaseController
                 CURLOPT_SSL_VERIFYHOST => 2,
                 CURLOPT_TIMEOUT        => 30,
             ]);
-
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
@@ -248,19 +303,15 @@ class PayPalController extends BaseController
             if ($httpCode !== 201) {
                 error_log('PayPal create order failed (' . $httpCode . '): ' . $response);
                 $paypalError = json_decode($response, true);
-                $errorMsg = $paypalError['message'] ?? 'Không thể tạo giao dịch PayPal.';
+                $errorMsg    = $paypalError['message'] ?? 'Không thể tạo giao dịch PayPal.';
                 throw new RuntimeException($errorMsg);
             }
 
             $result = json_decode($response, true);
-
-            // Lưu PayPal Order ID vào checkout session để ràng buộc với phiên này
             $_SESSION['paypal_checkout']['paypalOrderId'] = $result['id'];
 
-            $this->responseJson([
-                'success' => true,
-                'id'      => $result['id'],
-            ]);
+            $this->responseJson(['success' => true, 'id' => $result['id']]);
+
         } catch (RuntimeException $e) {
             error_log('PayPalController::createOrder exception: ' . $e->getMessage());
             $this->responseJson(['success' => false, 'message' => $e->getMessage()]);
@@ -268,17 +319,25 @@ class PayPalController extends BaseController
     }
 
     // -----------------------------------------------------------------------
-    // STEP 2: Capture PayPal Order (sau khi user approve trên popup PayPal)
+    // STEP 2: Capture PayPal Order
     // POST /paypal/capture-order
     // Body JSON: { "paypalOrderId": "..." }
+    //
+    // *** PHẦN ĐÃ SỬA — không đụng DB schema, chỉ thêm hoàn tiền tự động ***
+    //
+    // Luồng giữ nguyên thứ tự (capture trước, ghi DB sau) nhưng bổ sung:
+    //   - Lấy captureId từ response PayPal
+    //   - Nếu DB lỗi sau capture → gọi PayPal Refund API ngay lập tức
+    //   - Nếu refund cũng lỗi → alert admin qua SNS thay vì chỉ ghi log
     // -----------------------------------------------------------------------
     public function captureOrder(): void
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             $this->responseJson(['success' => false, 'message' => 'Method không hợp lệ'], 405);
+            return;
         }
 
-        $body = json_decode(file_get_contents('php://input'), true);
+        $body          = json_decode(file_get_contents('php://input'), true);
         $paypalOrderId = trim($body['paypalOrderId'] ?? '');
 
         if (empty($paypalOrderId)) {
@@ -286,9 +345,7 @@ class PayPalController extends BaseController
             return;
         }
 
-        // Idempotency guard: kiểm tra trước mọi điều kiện khác —
-        // paypal_checkout đã bị xóa sau khi xử lý thành công nên không thể
-        // kiểm tra sau điều kiện session.
+        // Idempotency guard
         if (isset($_SESSION['paypal_processed'][$paypalOrderId])) {
             $this->responseJson([
                 'success' => true,
@@ -298,14 +355,12 @@ class PayPalController extends BaseController
             return;
         }
 
-        // Đọc thông tin đơn hàng đã lưu trong session
         $checkout = $_SESSION['paypal_checkout'] ?? null;
         if (!$checkout || empty($checkout['cart'])) {
             $this->responseJson(['success' => false, 'message' => 'Phiên thanh toán hết hạn. Vui lòng thử lại.']);
             return;
         }
 
-        // Ràng buộc PayPal Order ID với phiên checkout: chỉ chấp nhận ID đã được tạo bởi chính phiên này
         if (($checkout['paypalOrderId'] ?? '') !== $paypalOrderId) {
             error_log(sprintf(
                 'PAYPAL_ID_MISMATCH | SessionPayPalID=%s | ReceivedID=%s | UserID=%d',
@@ -320,7 +375,9 @@ class PayPalController extends BaseController
         try {
             $accessToken = $this->getAccessToken();
 
+            // ---------------------------------------------------------------
             // Gọi PayPal Capture API
+            // ---------------------------------------------------------------
             $ch = curl_init(PAYPAL_API_BASE . '/v2/checkout/orders/' . $paypalOrderId . '/capture');
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
@@ -345,11 +402,15 @@ class PayPalController extends BaseController
                 throw new RuntimeException('Thanh toán PayPal thất bại. Vui lòng thử lại.');
             }
 
-            // Xác minh số tiền và tiền tệ từ response PayPal khớp với session
-            $capturedAmount    = (float) ($result['purchase_units'][0]['payments']['captures'][0]['amount']['value']         ?? 0);
-            $capturedCurrency  =          $result['purchase_units'][0]['payments']['captures'][0]['amount']['currency_code'] ?? '';
-            $expectedAmount    = (float) $this->convertToPayPalAmount($checkout['totalAmount']);
-            $expectedCurrency  = PAYPAL_CURRENCY === 'VND' ? 'USD' : PAYPAL_CURRENCY;
+            // *** SỬA: Lưu captureId ngay sau khi capture thành công ***
+            // captureId dùng để gọi Refund API nếu DB lỗi phía sau
+            $captureId = $result['purchase_units'][0]['payments']['captures'][0]['id'] ?? null;
+
+            // Xác minh số tiền
+            $capturedAmount   = (float) ($result['purchase_units'][0]['payments']['captures'][0]['amount']['value']         ?? 0);
+            $capturedCurrency =          $result['purchase_units'][0]['payments']['captures'][0]['amount']['currency_code'] ?? '';
+            $expectedAmount   = (float) $this->convertToPayPalAmount($checkout['totalAmount']);
+            $expectedCurrency = PAYPAL_CURRENCY === 'VND' ? 'USD' : PAYPAL_CURRENCY;
 
             if ($capturedCurrency !== $expectedCurrency || abs($capturedAmount - $expectedAmount) > 0.01) {
                 error_log(sprintf(
@@ -357,10 +418,18 @@ class PayPalController extends BaseController
                     $paypalOrderId, $capturedAmount, $capturedCurrency,
                     $expectedAmount, $expectedCurrency, $checkout['userId']
                 ));
+                // Tiền đã bị thu nhưng số tiền sai → hoàn tiền ngay
+                if ($captureId) {
+                    $this->attemptAutoRefund($paypalOrderId, $captureId, $accessToken, $checkout['totalAmount']);
+                }
                 throw new RuntimeException('Số tiền giao dịch không khớp. Vui lòng liên hệ hỗ trợ.');
             }
 
-            // Capture thành công — lưu toàn bộ đơn hàng trong một transaction
+            // ---------------------------------------------------------------
+            // Capture thành công — ghi đơn hàng vào DB trong một transaction
+            // *** SỬA: bắt lỗi DB và hoàn tiền tự động thay vì chỉ log ***
+            // ---------------------------------------------------------------
+            $orderId = null;
             $this->orderModel->beginTransaction();
             try {
                 $orderId = $this->orderModel->createOrder(
@@ -377,7 +446,6 @@ class PayPalController extends BaseController
                 }
 
                 foreach ($checkout['cart'] as $item) {
-                    // Trừ tồn kho nguyên tử — rollback toàn bộ nếu không đủ hàng
                     if (!$this->bookModel->decrementStock($item['product_id'], $item['quantity'])) {
                         throw new RuntimeException('Sản phẩm ID ' . $item['product_id'] . ' không đủ tồn kho.');
                     }
@@ -395,9 +463,10 @@ class PayPalController extends BaseController
 
                 $this->orderModel->updateOrderStatus($orderId, 'pending');
                 $this->orderModel->commit();
+
             } catch (RuntimeException $dbEx) {
                 $this->orderModel->rollBack();
-                // Tiền đã capture nhưng DB lỗi — log đầy đủ để đối soát thủ công
+
                 error_log(sprintf(
                     'PAYPAL_DB_FAILURE | PayPalOrderID=%s | UserID=%d | Amount=%.2f | Error=%s',
                     $paypalOrderId,
@@ -405,16 +474,32 @@ class PayPalController extends BaseController
                     $checkout['totalAmount'],
                     $dbEx->getMessage()
                 ));
-                throw new RuntimeException('Thanh toán thành công nhưng có lỗi khi lưu đơn hàng. Vui lòng liên hệ hỗ trợ với mã giao dịch: ' . $paypalOrderId);
+
+                // *** SỬA: Hoàn tiền tự động thay vì chỉ log và bắt user liên hệ ***
+                if ($captureId) {
+                    $this->attemptAutoRefund(
+                        $paypalOrderId,
+                        $captureId,
+                        $accessToken,
+                        $checkout['totalAmount']
+                    );
+                    throw new RuntimeException(
+                        'Thanh toán thành công nhưng có lỗi khi lưu đơn hàng. ' .
+                        'Hệ thống đã tự động hoàn tiền về tài khoản PayPal của bạn.'
+                    );
+                }
+
+                throw new RuntimeException(
+                    'Thanh toán thành công nhưng có lỗi khi lưu đơn hàng. ' .
+                    'Vui lòng liên hệ hỗ trợ với mã giao dịch: ' . $paypalOrderId
+                );
             }
 
-            // Đánh dấu đã xử lý để chống double-submit trong cùng session
+            // Idempotency: lưu để chặn double-submit trong cùng session
             $_SESSION['paypal_processed'][$paypalOrderId] = $orderId;
 
-            // Thông báo SNS cho admin
             $this->snsService->notifyNewOrder($orderId, $checkout['totalAmount'], 'PayPal');
 
-            // Xóa giỏ hàng và session checkout
             unset($_SESSION['cart']);
             unset($_SESSION['paypal_checkout']);
 
@@ -423,6 +508,7 @@ class PayPalController extends BaseController
                 'message' => 'Thanh toán PayPal thành công!',
                 'orderId' => $orderId,
             ]);
+
         } catch (RuntimeException $e) {
             $this->responseJson(['success' => false, 'message' => $e->getMessage()]);
         }
